@@ -1,6 +1,7 @@
-#include <iostream.h>
+#pragma once
+#include <iostream>
 #include <vector>
-#include "RoutingEntry.h"
+#include "RoutingEntry.hpp"
 
 class Node {
 

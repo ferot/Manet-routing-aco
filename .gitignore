@@ -33,6 +33,5 @@
 .cproject
 .project
 # Scons build otuput products
-SConstruct
 main
 .sconsign.dblite
