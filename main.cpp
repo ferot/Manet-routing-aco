@@ -14,6 +14,8 @@ int main(){
 
     Graph graph = mockSimpleGraph();
 
+    graph.sendData(2, 3);
+
 	return 0;
 }
 

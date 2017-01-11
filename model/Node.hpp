@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include "RoutingEntry.hpp"
+#include "Packet.h"
 
 class RoutingEntry;
 
@@ -10,6 +11,7 @@ class Node {
 private:
 
 std::vector<RoutingEntry> routing_table;
+
 
 public:
 
@@ -20,6 +22,7 @@ public:
     std::vector<std::shared_ptr<Node> > neighbours;
 
     void addNeighbour(std::shared_ptr<Node> node);
+    void sendPacket(Packet packet);
     void forwardAntPhase(int destinationAddress);
 
 };

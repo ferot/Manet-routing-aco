@@ -10,12 +10,11 @@
 
 class Graph {
 
-    std::vector<Node> nodes;
+    std::vector<std::shared_ptr<Node> > nodes;
 
     public:
         void addNode(Node node);
-        void routeDiscovery();
-
+        void sendData(int senderAddress, int destinationAddress);
 };
 
 #endif //MANET_ROUTING_ACO_GRAPH_H
