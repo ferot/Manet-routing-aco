@@ -6,6 +6,9 @@
 #include "Packet.h"
 #include <iostream>
 
+const float PHEROMONE_DELTA = 0.05;
+const float EVAPORATION_FACTOR = 0.25;
+
 void Graph::addNode(Node node) {
     nodes.push_back(std::make_shared<Node>(node));
 }

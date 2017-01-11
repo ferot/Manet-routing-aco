@@ -1,7 +1,7 @@
 #include "RoutingEntry.hpp"
 
-RoutingEntry::RoutingEntry(std::shared_ptr<Node> dest, std::shared_ptr<Node> nhop) : destination(dest),
-                                                                                     next_hop(nhop),
+RoutingEntry::RoutingEntry(int dest, int nhop) : destinationAddress(dest),
+                                                                                     nextHopAddress(nhop),
                                                                                      pheromone(0.0) {
 
 }

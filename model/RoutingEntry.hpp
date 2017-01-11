@@ -11,10 +11,10 @@ private:
 public:
 
     RoutingEntry() {}
-    RoutingEntry(std::shared_ptr<Node> dest, std::shared_ptr<Node> nhop);
+    RoutingEntry(int dest, int nhop);
 
-    std::shared_ptr<Node> destination;
-    std::shared_ptr<Node> next_hop;
+    int destinationAddress;
+    int nextHopAddress;
     float pheromone;
 
 };

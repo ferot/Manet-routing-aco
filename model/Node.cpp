@@ -18,9 +18,9 @@ void Node::addNeighbour(std::shared_ptr <Node> node) {
 
 
 void Node::sendPacket(Packet packet) {
-    std::vector<RoutingEntry> entries = findDestinationEntries(packet);
+    std::vector<std::shared_ptr<RoutingEntry> > entries = findDestinationEntries(packet);
     if (entries.size() == 0) {
-        forwardAntPhase(packet.destinationAddress);
+        startForwardAntPhase(packet.destinationAddress);
     } else {
         // Send data
     }
@@ -28,10 +28,32 @@ void Node::sendPacket(Packet packet) {
 
 // Private
 
-std::vector<RoutingEntry> Node::findDestinationEntries(Packet packet) {
-    return routing_table;
+std::vector<std::shared_ptr<RoutingEntry> > Node::findDestinationEntries(Packet packet) {
+    return routingTable;
 }
 
-void Node::forwardAntPhase(int destinationAddress) {
+void Node::startForwardAntPhase(int destinationAddress) {
+    Packet forwardAnt = Packet(address, destinationAddress);
 
+    for (auto neighbour : neighbours) {
+        neighbour->passForwardAnt(address, forwardAnt);
+    }
+}
+
+void Node::passForwardAnt(int previousAddress, Packet ant) {
+    std::shared_ptr<RoutingEntry> entry = getEntryForDestinationAndHop(ant.sourceAddress, previousAddress);
+    if (entry == NULL) {
+        entry = std::make_shared<RoutingEntry>(RoutingEntry(ant.sourceAddress, previousAddress));
+    }
+}
+
+std::shared_ptr<RoutingEntry> Node::getEntryForDestinationAndHop(int dest, int hop) {
+    std::shared_ptr<RoutingEntry> entry;
+    std::for_each(routingTable.begin(), routingTable.end(), [&](std::shared_ptr<RoutingEntry> routingEntry) {
+        if (routingEntry->destinationAddress == dest && routingEntry->nextHopAddress == hop) {
+            entry = routingEntry;
+        }
+    });
+
+    return entry;
 }
