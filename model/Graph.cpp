@@ -25,6 +25,16 @@ void Graph::sendData(int senderAddress, int destinationAddress) {
     if (source != NULL) {
 
         source->sendPacket(packet);
+
+        for (auto node : nodes) {
+            cout << node->address << " -----" << endl;
+
+            for (auto entry : node->routingTable) {
+                cout << "Destination " << entry->destinationAddress << " next hop " << entry->nextHopAddress << " pheromone " << entry->pheromone << endl;
+            }
+
+        }
+
     } else {
         std::cout << "No such node" << std::endl;
     }

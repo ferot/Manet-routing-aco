@@ -10,7 +10,6 @@ class Node: public std::enable_shared_from_this<Node> {
 
 private:
 
-std::vector<std::shared_ptr<RoutingEntry> > routingTable;
     std::vector<int> visitedForwardAnts;
     std::vector<int> visitedBackwardAnts;
 
@@ -18,9 +17,11 @@ private:
 
     std::vector<std::shared_ptr<RoutingEntry> > findDestinationEntries(Packet packet);
     void startForwardAntPhase(int destinationAddress);
-    void startBackwardAntPhase(int sourceAddress);
+    void startBackwardAntPhase(Packet packet);
 
 public:
+
+    std::vector<std::shared_ptr<RoutingEntry> > routingTable;
 
     Node(){}
     Node(std::string name, int address);
@@ -31,6 +32,7 @@ public:
     void addNeighbour(std::shared_ptr<Node> node);
     void sendPacket(Packet packet);
     void passForwardAnt(int previousAddress, Packet ant);
+    void passBackwardAnt(int previousAddress, Packet ant);
     void updateRoutingEntry(Packet packet);
     std::shared_ptr<RoutingEntry> getEntryForDestinationAndHop(int dest, int hop);
 
