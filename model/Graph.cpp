@@ -5,6 +5,7 @@
 #include "Graph.h"
 #include "Packet.h"
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 
