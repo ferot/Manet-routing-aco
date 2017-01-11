@@ -6,12 +6,17 @@
 
 class RoutingEntry;
 
-class Node {
+class Node: public std::enable_shared_from_this<Node> {
 
 private:
 
 std::vector<RoutingEntry> routing_table;
 
+private:
+
+    std::vector<RoutingEntry> findDestinationEntries(Packet packet);
+    void forwardAntPhase(int destinationAddress);
+    void backwardAntPhase(int sourceAddress);
 
 public:
 
@@ -23,6 +28,5 @@ public:
 
     void addNeighbour(std::shared_ptr<Node> node);
     void sendPacket(Packet packet);
-    void forwardAntPhase(int destinationAddress);
 
 };

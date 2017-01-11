@@ -32,18 +32,27 @@ Graph mockSimpleGraph() {
 	Node node8("D", 8);
 
     node1.addNeighbour(std::make_shared<Node>(node2));
+    node2.addNeighbour(std::make_shared<Node>(node1));
+
     node1.addNeighbour(std::make_shared<Node>(node3));
+    node3.addNeighbour(std::make_shared<Node>(node1));
 
     node3.addNeighbour(std::make_shared<Node>(node4));
+    node4.addNeighbour(std::make_shared<Node>(node3));
 
     node4.addNeighbour(std::make_shared<Node>(node5));
     node4.addNeighbour(std::make_shared<Node>(node7));
+    node5.addNeighbour(std::make_shared<Node>(node4));
+    node7.addNeighbour(std::make_shared<Node>(node4));
 
     node5.addNeighbour(std::make_shared<Node>(node6));
+    node6.addNeighbour(std::make_shared<Node>(node5));
 
     node6.addNeighbour(std::make_shared<Node>(node8));
+    node8.addNeighbour(std::make_shared<Node>(node6));
 
     node7.addNeighbour(std::make_shared<Node>(node8));
+    node8.addNeighbour(std::make_shared<Node>(node7));
 
     graph.addNode(node1);
     graph.addNode(node2);
