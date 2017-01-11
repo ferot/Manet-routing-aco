@@ -7,10 +7,10 @@ class RoutingEntry {
 private:
 
 public:
-RoutingEntry(){}
-
-std::unique_ptr<Node> destination;
-std::unique_ptr<Node> next_hop;
+    RoutingEntry(){}
+    RoutingEntry (std::shared_ptr<Node> dest, std::shared_ptr<Node> nhop );
+    std::shared_ptr<Node> destination;
+    std::shared_ptr<Node> next_hop;
 
 float pheromone;
 };
