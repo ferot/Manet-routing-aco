@@ -1,2 +1,2 @@
-Program(['main.cpp','model/Node.cpp', 'model/RoutingEntry.cpp'])
+Program(['main.cpp', Glob('model/*.cpp')])
 

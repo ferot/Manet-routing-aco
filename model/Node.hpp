@@ -14,6 +14,12 @@ std::vector<RoutingEntry> routing_table;
 public:
 
     Node(){}
-    int id;
-    std::vector<Node> neighbours;
+    Node(std::string name, int address);
+    int address;
+    std::string name;
+    std::vector<std::shared_ptr<Node> > neighbours;
+
+    void addNeighbour(std::shared_ptr<Node> node);
+    void forwardAntPhase(int destinationAddress);
+
 };
