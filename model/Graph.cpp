@@ -6,11 +6,10 @@
 #include "Packet.h"
 #include <iostream>
 
-const float PHEROMONE_DELTA = 0.05;
-const float EVAPORATION_FACTOR = 0.25;
+using namespace std;
 
-void Graph::addNode(Node node) {
-    nodes.push_back(std::make_shared<Node>(node));
+void Graph::addNode(std::shared_ptr<Node> node) {
+    nodes.push_back(node);
 }
 
 void Graph::sendData(int senderAddress, int destinationAddress) {
@@ -24,6 +23,7 @@ void Graph::sendData(int senderAddress, int destinationAddress) {
         });
 
     if (source != NULL) {
+
         source->sendPacket(packet);
     } else {
         std::cout << "No such node" << std::endl;

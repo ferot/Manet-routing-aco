@@ -8,13 +8,16 @@
 #include "RoutingEntry.hpp"
 #include <vector>
 
+const float PHEROMONE_DELTA = 0.05;
+const float EVAPORATION_FACTOR = 0.25;
+
 class Graph {
 
-    std::vector<std::shared_ptr<Node> > nodes;
 
     public:
-        void addNode(Node node);
-        void sendData(int senderAddress, int destinationAddress);
+    std::vector<std::shared_ptr<Node> > nodes;
+    void addNode(std::shared_ptr<Node> node);
+    void sendData(int senderAddress, int destinationAddress);
 };
 
 #endif //MANET_ROUTING_ACO_GRAPH_H

@@ -17,4 +17,6 @@ public:
     int nextHopAddress;
     float pheromone;
 
+    void increasePheromone();
+
 };
