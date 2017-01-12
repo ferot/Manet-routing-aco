@@ -6,26 +6,29 @@
 
 using namespace std;
 
+typedef std::vector<std::shared_ptr<RoutingEntry> > routingEntryVec;
+
 Node::Node(std::string name, int address) : name(name), address(address) {}
 
 // Public
 
 void Node::addNeighbour(std::shared_ptr <Node> node) {
 
-    if(std::find(neighbours.begin(), neighbours.end(), node) != neighbours.end() == false) {
+    auto it =find(neighbours.begin(), neighbours.end(), node);
+
+	if(it == neighbours.end()) {
         neighbours.push_back(node);
     }
-
 }
 
 
 
 void Node::sendPacket(Packet packet) {
-    std::vector<std::shared_ptr<RoutingEntry> > entries = findDestinationEntries(packet);
-    if (entries.size() == 0) {
 
-        startForwardAntPhase(packet.destinationAddress);
+	routingEntryVec entries = findDestinationEntries(packet);
 
+	if (entries.size() == 0) {
+		startForwardAntPhase(packet.destinationAddress);
     } else {
         // Send data
     }
@@ -33,9 +36,10 @@ void Node::sendPacket(Packet packet) {
 
 // Private
 
-std::vector<std::shared_ptr<RoutingEntry> > Node::findDestinationEntries(Packet packet) {
-    std::vector<std::shared_ptr<RoutingEntry> > entries;
-    std::for_each(routingTable.begin(), routingTable.end(), [&](std::shared_ptr<RoutingEntry> entry) {
+routingEntryVec Node::findDestinationEntries(Packet packet) {
+    routingEntryVec entries;
+
+    for_each(routingTable.begin(), routingTable.end(), [&](std::shared_ptr<RoutingEntry> entry) {
         if (entry->destinationAddress == packet.destinationAddress) {
             entries.push_back(entry);
         }
@@ -54,7 +58,7 @@ void Node::startForwardAntPhase(int destinationAddress) {
 
 void Node::passForwardAnt(int previousAddress, Packet ant) {
 
-    std::cout << endl << "Previous address " << previousAddress << " current address " << address << std::endl;
+    std::cout << endl << "### Passing Forward Ant. Previous address " << previousAddress << " current address " << address << std::endl;
 
     if (ant.destinationAddress == address) {
 
@@ -62,7 +66,8 @@ void Node::passForwardAnt(int previousAddress, Packet ant) {
 
     } else {
 
-        if(std::find(visitedForwardAnts.begin(), visitedForwardAnts.end(), ant.sequenceNumber) != visitedForwardAnts.end() == false) {
+        auto it = std::find(visitedForwardAnts.begin(), visitedForwardAnts.end(), ant.sequenceNumber);
+        if(it == visitedForwardAnts.end()) {
 
             visitedForwardAnts.push_back(ant.sequenceNumber);
 
@@ -83,19 +88,21 @@ void Node::passForwardAnt(int previousAddress, Packet ant) {
                     neighbour->passForwardAnt(address, ant);
                 }
             }
+
         } else {
-            cout << "Deleted forward ant " << ant.sequenceNumber << endl;
+            cout << "### Deleted forward ant " << ant.sequenceNumber << " at Node " << name << endl;
         }
     }
 
 }
 
 void Node::startBackwardAntPhase(Packet packet) {
-    std::cout << "back" << std::endl;
+    std::cout << "### Backward Ant Sent" << std::endl;
 
     Packet backwardAnt = Packet(address, packet.sourceAddress);
+    auto it = std::find(visitedBackwardAnts.begin(), visitedBackwardAnts.end(), packet.sequenceNumber);
 
-    if(std::find(visitedBackwardAnts.begin(), visitedBackwardAnts.end(), packet.sequenceNumber) != visitedBackwardAnts.end() == false) {
+    if(it == visitedBackwardAnts.end()) {
         visitedBackwardAnts.push_back(packet.sequenceNumber);
 
         for (auto neighbour : neighbours) {
@@ -107,7 +114,7 @@ void Node::startBackwardAntPhase(Packet packet) {
 
 void Node::passBackwardAnt(int previousAddress, Packet ant) {
 
-    std::cout << std::endl << "Previous address " << previousAddress << " current address " << address << std::endl;
+    std::cout << std::endl << "### Passing Backward Ant. Previous address " << previousAddress << " current address " << address << std::endl;
 
     if (ant.destinationAddress == address) {
 
@@ -115,7 +122,8 @@ void Node::passBackwardAnt(int previousAddress, Packet ant) {
 
     } else {
 
-        if(std::find(visitedBackwardAnts.begin(), visitedBackwardAnts.end(), ant.sequenceNumber) != visitedBackwardAnts.end() == false) {
+        auto it = std::find(visitedBackwardAnts.begin(), visitedBackwardAnts.end(), ant.sequenceNumber);
+        if(it == visitedBackwardAnts.end()) {
 
             visitedBackwardAnts.push_back(ant.sequenceNumber);
 
@@ -125,7 +133,6 @@ void Node::passBackwardAnt(int previousAddress, Packet ant) {
                 entry = std::make_shared<RoutingEntry>(RoutingEntry(ant.sourceAddress, previousAddress));
                 routingTable.push_back(entry);
             }
-
             entry->increasePheromone();
 
             for (auto neighbour : neighbours) {
@@ -135,10 +142,9 @@ void Node::passBackwardAnt(int previousAddress, Packet ant) {
                     if (neighbour->address != previousAddress) {
                         neighbour->passBackwardAnt(address, ant);
                     }
-
             }
         } else {
-            cout << "Deleted backward ant " << ant.sequenceNumber << " node " << name << endl;
+            cout << "### Deleted backward ant " << ant.sequenceNumber << " at Node " << name << endl;
         }
     }
 

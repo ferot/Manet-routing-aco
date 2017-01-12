@@ -11,6 +11,7 @@ using namespace std;
 
 Graph mockSimpleGraph();
 
+typedef std::shared_ptr<Node> tNodeptr;
 
 int main(){
 
@@ -33,14 +34,14 @@ Graph mockSimpleGraph() {
 	Node node7("6", 7);
 	Node node8("D", 8);
 
-    std::shared_ptr<Node> n1Ptr = std::make_shared<Node>(node1);
-    std::shared_ptr<Node> n2Ptr = std::make_shared<Node>(node2);
-    std::shared_ptr<Node> n3Ptr = std::make_shared<Node>(node3);
-    std::shared_ptr<Node> n4Ptr = std::make_shared<Node>(node4);
-    std::shared_ptr<Node> n5Ptr = std::make_shared<Node>(node5);
-    std::shared_ptr<Node> n6Ptr = std::make_shared<Node>(node6);
-    std::shared_ptr<Node> n7Ptr = std::make_shared<Node>(node7);
-    std::shared_ptr<Node> n8Ptr = std::make_shared<Node>(node8);
+    tNodeptr n1Ptr = std::make_shared<Node>(node1);
+    tNodeptr n2Ptr = std::make_shared<Node>(node2);
+    tNodeptr n3Ptr = std::make_shared<Node>(node3);
+    tNodeptr n4Ptr = std::make_shared<Node>(node4);
+    tNodeptr n5Ptr = std::make_shared<Node>(node5);
+    tNodeptr n6Ptr = std::make_shared<Node>(node6);
+    tNodeptr n7Ptr = std::make_shared<Node>(node7);
+    tNodeptr n8Ptr = std::make_shared<Node>(node8);
 
     n1Ptr->addNeighbour(n2Ptr);
     n2Ptr->addNeighbour(n1Ptr);

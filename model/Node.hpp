@@ -8,6 +8,9 @@ class RoutingEntry;
 
 class Node: public std::enable_shared_from_this<Node> {
 
+    typedef std::vector<std::shared_ptr<RoutingEntry> > tRoutingEntryVec;
+    typedef std::vector<std::shared_ptr<Node> > tNodeVec;
+
 private:
 
     std::vector<int> visitedForwardAnts;
@@ -15,19 +18,19 @@ private:
 
 private:
 
-    std::vector<std::shared_ptr<RoutingEntry> > findDestinationEntries(Packet packet);
+    tRoutingEntryVec findDestinationEntries(Packet packet);
     void startForwardAntPhase(int destinationAddress);
     void startBackwardAntPhase(Packet packet);
 
 public:
 
-    std::vector<std::shared_ptr<RoutingEntry> > routingTable;
+    tRoutingEntryVec routingTable;
 
     Node(){}
     Node(std::string name, int address);
     int address;
     std::string name;
-    std::vector<std::shared_ptr<Node> > neighbours;
+    tNodeVec neighbours;
 
     void addNeighbour(std::shared_ptr<Node> node);
     void sendPacket(Packet packet);
