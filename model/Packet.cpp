@@ -8,5 +8,5 @@
 
 Packet::Packet(int src, int dest) : sourceAddress(src), destinationAddress(dest) {
     srand(time(NULL));
-    sequenceNumber = rand();
+    sequenceNumber = rand() % 1000000 +10000;
 }
