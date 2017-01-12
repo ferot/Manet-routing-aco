@@ -6,6 +6,7 @@
 #include "Packet.h"
 #include <iostream>
 #include <algorithm>
+#include <memory>
 
 using namespace std;
 
@@ -25,8 +26,10 @@ void Graph::sendData(int senderAddress, int destinationAddress) {
 
     if (source != NULL) {
 
+    	cout<<"\n### Sending packet ...\n";
         source->sendPacket(packet);
 
+        cout<<"\n### Showing address of graph's nodes and it's routing entries \n";
         for (auto node : nodes) {
             cout << node->address << " -----" << endl;
 

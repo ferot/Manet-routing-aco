@@ -7,6 +7,7 @@
 
 #include "RoutingEntry.hpp"
 #include <vector>
+#include <memory>
 
 const float PHEROMONE_DELTA = 0.05;
 const float EVAPORATION_FACTOR = 0.25;
