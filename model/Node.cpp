@@ -61,7 +61,7 @@ void Node::passForwardAnt(int previousAddress, Packet ant) {
     std::cout << endl << "### Passing Forward Ant. Previous address " << previousAddress << " current address " << address << std::endl;
 
     if (ant.destinationAddress == address) {
-
+        cout<< "\n### Sending Backward Ant \n";
         startBackwardAntPhase(ant);
 
     } else {
@@ -74,6 +74,7 @@ void Node::passForwardAnt(int previousAddress, Packet ant) {
             std::shared_ptr<RoutingEntry> entry = getEntryForDestinationAndHop(ant.sourceAddress, previousAddress);
 
             if (entry == NULL) {
+                cout << "@@@ Pushing entry onto Node's routingTable\n";
                 entry = std::make_shared<RoutingEntry>(RoutingEntry(ant.sourceAddress, previousAddress));
                 routingTable.push_back(entry);
             }
@@ -151,7 +152,8 @@ void Node::passBackwardAnt(int previousAddress, Packet ant) {
 }
 
 std::shared_ptr<RoutingEntry> Node::getEntryForDestinationAndHop(int dest, int hop) {
-    std::shared_ptr<RoutingEntry> entry;
+    std::shared_ptr<RoutingEntry> entry = NULL;
+
     std::for_each(routingTable.begin(), routingTable.end(), [&](std::shared_ptr<RoutingEntry> routingEntry) {
         if (routingEntry->destinationAddress == dest && routingEntry->nextHopAddress == hop) {
             entry = routingEntry;
