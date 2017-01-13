@@ -1,13 +1,26 @@
 #include "Node.hpp"
 #include <memory>
 #include <algorithm>
-
-// Constructors
+#include "Graph.h"
 
 using namespace std;
 
-Node::Node(std::string name, int address) : name(name), address(address) {}
+static Graph graph;
 
+static void updatePherNodes(){
+tNodeVec nodes = graph.nodes;
+
+for_each(nodes.begin(),nodes.end(),[](shared_ptr<Node> &node){
+    for(auto entry: node->routingTable)
+    {
+        entry->evaporatePheromone();
+    }
+});
+}
+
+// Constructors
+
+Node::Node(std::string name, int address) : name(name), address(address) {}
 // Public
 
 void Node::addNeighbour(std::shared_ptr <Node> node) {
@@ -19,13 +32,12 @@ void Node::addNeighbour(std::shared_ptr <Node> node) {
     }
 }
 
-void Node::evaporatePherNodes(){
-
-}
-
 bool Node::sendPacket(Packet packet) {
+
     bool afterDiscovery = false;
     tRoutingEntryVec entries = findDestinationEntries(packet);
+
+    updatePherNodes();
 
     //we have to check if we have entries and if we are not in destination node - to avoid sending discovery
     if ((entries.size() == 0) && (address != packet.destinationAddress)) {
@@ -39,9 +51,12 @@ bool Node::sendPacket(Packet packet) {
 
        //find the best node by address
        for(auto node : neighbours){
-           if(node->address == bestPath->nextHopAddress)
+           if(node->address == bestPath->nextHopAddress){
                bestNode = node;
+               break;
+           }
        }
+
        cout<< "\n### Packet in node @address: " << address<< "\n Now sending packet to Node @address :" << bestNode->address << endl;
         bestNode->sendPacket(packet);
         bestPath->increasePheromone();

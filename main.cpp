@@ -13,9 +13,11 @@ Graph mockSimpleGraph();
 
 typedef std::shared_ptr<Node> tNodeptr;
 
+static Graph graph;
+
 int main(){
 
-    Graph graph = mockSimpleGraph();
+    graph = mockSimpleGraph();
 
     graph.sendData(1, 8);
 
