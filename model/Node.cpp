@@ -6,8 +6,6 @@
 
 using namespace std;
 
-typedef std::vector<std::shared_ptr<RoutingEntry> > routingEntryVec;
-
 Node::Node(std::string name, int address) : name(name), address(address) {}
 
 // Public
@@ -25,19 +23,44 @@ void Node::addNeighbour(std::shared_ptr <Node> node) {
 
 void Node::sendPacket(Packet packet) {
 
-	routingEntryVec entries = findDestinationEntries(packet);
+    tRoutingEntryVec entries = findDestinationEntries(packet);
 
 	if (entries.size() == 0) {
 		startForwardAntPhase(packet.destinationAddress);
+        //TODO : handle no route to destination case?
     } else {
-        // Send data
+       findBestPath(entries);
+        // TODO : evaluate probability of nodes
+        // TODO : choose the best Node and pass there packet
     }
 }
 
 // Private
 
-routingEntryVec Node::findDestinationEntries(Packet packet) {
-    routingEntryVec entries;
+shared_ptr<RoutingEntry> Node::findBestPath (tRoutingEntryVec vec){
+    float pheromoneSum = 0.0;
+    shared_ptr<RoutingEntry> best = NULL;
+    vector<tRentryProbPair> entryProb;
+
+    //count sum of pheromones for each entry
+    for_each(vec.begin(),vec.end(),[&pheromoneSum](shared_ptr<RoutingEntry> entry){
+            pheromoneSum += entry->pheromone;
+    });
+
+    //count probability
+    for_each(vec.begin(),vec.end(),[&](shared_ptr<RoutingEntry> entry){
+        tRentryProbPair pair = make_pair(entry,entry->pheromone/pheromoneSum);
+        entryProb.push_back(pair);
+    });
+
+    //sort in case the best route is unreachable, so that the latter entry should be considered
+    sort(entryProb.begin(),entryProb.end(),[](const tRentryProbPair & a,const tRentryProbPair & b) -> bool {return (a.second > b.second);});
+    best = (entryProb.front()).first;
+    return best;
+}
+
+tRoutingEntryVec Node::findDestinationEntries(Packet packet) {
+    tRoutingEntryVec entries;
 
     for_each(routingTable.begin(), routingTable.end(), [&](std::shared_ptr<RoutingEntry> entry) {
         if (entry->destinationAddress == packet.destinationAddress) {

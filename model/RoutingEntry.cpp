@@ -10,3 +10,7 @@ RoutingEntry::RoutingEntry(int dest, int nhop) : destinationAddress(dest),
 void RoutingEntry::increasePheromone() {
     pheromone += PHEROMONE_DELTA;
 }
+
+void RoutingEntry::evaporatePheromone(){
+    pheromone = (1-EVAPORATION_FACTOR)*pheromone;
+}

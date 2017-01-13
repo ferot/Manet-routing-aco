@@ -35,3 +35,4 @@
 # Scons build otuput products
 main
 .sconsign.dblite
+qtc.*
