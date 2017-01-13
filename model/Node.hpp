@@ -36,7 +36,7 @@ public:
     tNodeVec neighbours;
 
     void addNeighbour(std::shared_ptr<Node> node);
-    void sendPacket(Packet packet);
+    bool sendPacket(Packet packet);
     void passForwardAnt(int previousAddress, Packet ant);
     void passBackwardAnt(int previousAddress, Packet ant);
     void updateRoutingEntry(Packet packet);

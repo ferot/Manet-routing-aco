@@ -27,7 +27,12 @@ void Graph::sendData(int senderAddress, int destinationAddress) {
     if (source != NULL) {
 
     	cout<<"\n### Sending packet ...\n";
-        source->sendPacket(packet);
+        bool retry = false;
+        retry = source->sendPacket(packet);
+        if(retry){
+            cout<<"\n### After discovery. Retrying sending \n";
+            source->sendPacket(packet);
+        }
 
         cout<<"\n### Showing address of graph's nodes and it's routing entries \n";
         for (auto node : nodes) {

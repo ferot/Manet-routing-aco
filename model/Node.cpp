@@ -12,27 +12,43 @@ Node::Node(std::string name, int address) : name(name), address(address) {}
 
 void Node::addNeighbour(std::shared_ptr <Node> node) {
 
-    auto it =find(neighbours.begin(), neighbours.end(), node);
+    auto it = find(neighbours.begin(), neighbours.end(), node);
 
 	if(it == neighbours.end()) {
         neighbours.push_back(node);
     }
 }
 
+void Node::evaporatePherNodes(){
 
+}
 
-void Node::sendPacket(Packet packet) {
-
+bool Node::sendPacket(Packet packet) {
+    bool afterDiscovery = false;
     tRoutingEntryVec entries = findDestinationEntries(packet);
 
-	if (entries.size() == 0) {
+    //we have to check if we have entries and if we are not in destination node - to avoid sending discovery
+    if ((entries.size() == 0) && (address != packet.destinationAddress)) {
 		startForwardAntPhase(packet.destinationAddress);
         //TODO : handle no route to destination case?
+        afterDiscovery = true;
     } else {
-       findBestPath(entries);
-        // TODO : evaluate probability of nodes
-        // TODO : choose the best Node and pass there packet
+        if(address != packet.destinationAddress){
+       shared_ptr<RoutingEntry> bestPath = findBestPath(entries);
+       shared_ptr<Node> bestNode = NULL;
+
+       //find the best node by address
+       for(auto node : neighbours){
+           if(node->address == bestPath->nextHopAddress)
+               bestNode = node;
+       }
+       cout<< "\n### Packet in node @address: " << address<< "\n Now sending packet to Node @address :" << bestNode->address << endl;
+        bestNode->sendPacket(packet);
+        bestPath->increasePheromone();
     }
+        else cout<<"\n### Packet reached destination!!!\n";
+    }
+    return afterDiscovery;
 }
 
 // Private
@@ -42,7 +58,7 @@ shared_ptr<RoutingEntry> Node::findBestPath (tRoutingEntryVec vec){
     shared_ptr<RoutingEntry> best = NULL;
     vector<tRentryProbPair> entryProb;
 
-    //count sum of pheromones for each entry
+    //count sum of pheromones for available routes
     for_each(vec.begin(),vec.end(),[&pheromoneSum](shared_ptr<RoutingEntry> entry){
             pheromoneSum += entry->pheromone;
     });
