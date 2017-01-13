@@ -18,5 +18,6 @@ public:
     float pheromone;
 
     void increasePheromone();
+    void evaporatePheromone();
 
 };

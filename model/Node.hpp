@@ -1,15 +1,18 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include <utility>
 #include "RoutingEntry.hpp"
 #include "Packet.h"
 
 class RoutingEntry;
+class Node;
+
+typedef std::vector<std::shared_ptr<RoutingEntry> > tRoutingEntryVec;
+typedef std::vector<std::shared_ptr<Node> > tNodeVec;
+typedef std::pair<std::shared_ptr<RoutingEntry>,float> tRentryProbPair;
 
 class Node: public std::enable_shared_from_this<Node> {
-
-    typedef std::vector<std::shared_ptr<RoutingEntry> > tRoutingEntryVec;
-    typedef std::vector<std::shared_ptr<Node> > tNodeVec;
 
 private:
 
@@ -21,7 +24,7 @@ private:
     tRoutingEntryVec findDestinationEntries(Packet packet);
     void startForwardAntPhase(int destinationAddress);
     void startBackwardAntPhase(Packet packet);
-
+    std::shared_ptr<RoutingEntry> findBestPath (tRoutingEntryVec vec);
 public:
 
     tRoutingEntryVec routingTable;
