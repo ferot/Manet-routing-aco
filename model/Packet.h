@@ -13,19 +13,18 @@ typedef std::shared_ptr<Packet> tPacketptr;
 class Packet {
 
     public:
-enum class Type {regular, forward, backward};
+enum class Type {regular, forward, backward, route_error, duplicate_error};
 
     Packet(int src, int dest, Type type = Type::regular);
+    // Hiding copy constructor helps discovering unplanned generation of new sequence number.
+    Packet(const Packet&) = delete;
+    Packet& operator=(const Packet&) = delete;
 
     const Type type;
     const int sequenceNumber;
     int destinationAddress;
     int sourceAddress;
-
-    private:
-    // Hiding copy constructor helps discovering unplanned generation of new sequence number.
-    Packet(const Packet& that); 
-
+    std::string type_string;
 };
 
 #endif //MANET_ROUTING_ACO_PACKET_H

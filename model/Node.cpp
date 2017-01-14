@@ -5,19 +5,6 @@
 
 using namespace std;
 
-extern Graph graph;
-
-static void updatePherNodes(){
-    tNodeVec nodes = graph.nodes;
-
-    for_each(nodes.begin(),nodes.end(),[](shared_ptr<Node> &node){
-        for(auto entry: node->routingTable)
-        {
-            entry->evaporatePheromone();
-        }
-    });
-}
-
 // Constructors
 
 Node::Node(std::string name, int address) : name(name), address(address) {}
@@ -32,16 +19,55 @@ void Node::addNeighbour(std::shared_ptr <Node> node) {
     }
 }
 
-bool Node::sendPacket(tPacketptr packet) {
+void Node::sendPacket(int fromHop, tPacketptr packet){
+    entryBuffer.push_back(std::make_pair(fromHop, packet));
+}
 
-    updatePherNodes();
+void Node::postTick(){
+    internalEntryBuffer = entryBuffer;
+    entryBuffer.clear();
+}
 
+void Node::tick(){
+    // evaporate pheromone
+    for(auto entry: routingTable)
+    {
+        entry->evaporatePheromone();
+    }
+
+    // process incoming packets
+    for (auto entryPair : internalEntryBuffer)
+    {
+        int fromNode = entryPair.first;
+        tPacketptr packet = entryPair.second;
+
+        switch (packet->type) {
+            case Packet::Type::forward:
+            case Packet::Type::backward:
+                passDiscoveryAnt(fromNode, packet);
+                break;
+            case Packet::Type::regular:
+                passRegularPacket(packet);
+                break;
+            case Packet::Type::route_error:
+                break;
+            case Packet::Type::duplicate_error:
+                break;
+            default:
+                throw std::runtime_error("Unexpected ant type");
+        }
+    }
+    internalEntryBuffer.clear();
+}
+
+void Node::passRegularPacket(tPacketptr packet)
+{
     //we have to check if we have entries and if we are not in destination node - to avoid sending discovery
     if (address != packet->destinationAddress) {
         tRoutingEntryVec entries = findDestinationEntries(packet);
 
         if (entries.empty()) {
-            return false;
+            cout<<"\n### Don't know where to send packet!!!\n";
         } 
         else {
             shared_ptr<RoutingEntry> bestPath = findBestPath(entries);
@@ -59,12 +85,11 @@ bool Node::sendPacket(tPacketptr packet) {
             bestPath->increasePheromone();
 
             cout<< "\n### Packet in node @address: " << address<< "\n Now sending packet to Node @address :" << bestNode->address << endl;
-            return bestNode->sendPacket(packet);
+            bestNode->sendPacket(address, packet);
         }
     }
     else {
         cout<<"\n### Packet reached destination!!!\n";
-        return true;
     }
 }
 
@@ -104,67 +129,34 @@ tRoutingEntryVec Node::findDestinationEntries(tPacketptr packet) {
     return entries;
 }
 
-void Node::startAntDiscoveryPhase(tPacketptr ant) {
-
-    if(std::get<1>(visitedAnts.insert(ant->sequenceNumber))) {
-        for (auto neighbour : neighbours) {
-            neighbour->passDiscoveryAnt(address, ant);
-        }
-    }
-}
-
 void Node::passDiscoveryAnt(int previousAddress, tPacketptr ant) {
 
-    //TODO trzeba dodać obsługę pętli
-    //TODO sposób przeszukiwania powoduje, że graf układa się inaczej niż w artykule
-
-    std::string ant_type;
-    switch (ant->type) {
-        case Packet::Type::forward:
-            ant_type = "forward";
-            break;
-        case Packet::Type::backward:
-            ant_type = "backward";
-            break;
-        default:
-            ant_type = "unexpected";
-    }
-    std::cout << endl << "### Passing " << ant_type << " ant. Previous address " << previousAddress << " current address " << address << std::endl;
+    //TODO trzeba dodać obsługę błędu pętli
+    std::cout << endl << "### Passing " << ant->type_string << " ant. Previous address " << previousAddress << " current address " << address << std::endl;
 
     std::shared_ptr<RoutingEntry> entry = getEntryForDestinationAndHop(ant->sourceAddress, previousAddress);
     if (entry == NULL) {
-        cout << "@@@ Pushing entry onto Node's routingTable\n";
+        cout << "@@@ Pushing entry onto Node's routingTable" << std::endl;
         entry = std::make_shared<RoutingEntry>(RoutingEntry(ant->sourceAddress, previousAddress));
         routingTable.push_back(entry);
         entry->increasePheromone(); //TODO wartość feromonów jest obliczana w zależności od liczby aktualnie wykonanych hopek (źródło: artykuł).
     }
     
-
     if(std::get<1>(visitedAnts.insert(ant->sequenceNumber))) { // if ant did not visit before
 
         if (ant->destinationAddress == address) {
-            switch (ant->type) {
-                case Packet::Type::forward: {
-                    cout<< "\n### Forward Ant travelled to destination.\n";
-                    break;
-                }
-                case Packet::Type::backward:
-                    cout<< "\n### Backward Ant travelled back to source.\n";
-                    break;
-                default:
-                    throw std::runtime_error("Unexpected discovery ant type");
-            }
+            cout<< "### "<< ant->type_string <<" Ant finished its journey." << std::endl;
         } 
         else {
             for (auto neighbour : neighbours) {
                 if (neighbour->address != previousAddress) {
                     std::cout << "Current " << address << " neighbour " << neighbour->address << " " << __FUNCTION__ << std::endl;
-                    neighbour->passDiscoveryAnt(address, ant);
+                    neighbour->sendPacket(address, ant);
                 }
             }
         }
     } else {
-        cout << "### Ignoring " << ant_type << " ant " << ant->sequenceNumber << " at Node with address " << address << endl;
+        cout << "### Ignoring " << ant->type_string << " ant " << ant->sequenceNumber << " at Node with address " << address << endl;
     }
 
 }

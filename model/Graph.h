@@ -15,12 +15,11 @@ const float EVAPORATION_FACTOR = 0.25;
 class Node;
 
 class Graph {
-
-
     public:
     std::vector<std::shared_ptr<Node> > nodes;
     void addNode(std::shared_ptr<Node> node);
     void sendData(int senderAddress, int destinationAddress);
+    void tick();
 };
 
 #endif //MANET_ROUTING_ACO_GRAPH_H

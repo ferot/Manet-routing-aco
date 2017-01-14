@@ -14,13 +14,10 @@ Graph mockSimpleGraph();
 
 typedef std::shared_ptr<Node> tNodeptr;
 
-extern Graph graph;
-Graph graph;
-
 int main(){
     srand(time(NULL)); //it has global effect
 
-    graph = mockSimpleGraph();
+    Graph graph = mockSimpleGraph();
 
     graph.sendData(1, 8);
 

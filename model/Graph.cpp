@@ -31,14 +31,19 @@ void Graph::sendData(int senderAddress, int destinationAddress) {
     if (source != NULL) {
 
     	cout<<"\n### Sending packet ...\n";
-        bool success = source->sendPacket(packet);
-        if(!success){
-            cout<<"\n### Finding route failed. Starting discovery. \n";
-            //Forward search and backward search must happen sequentially
-            source->startAntDiscoveryPhase(std::make_shared<Packet>(senderAddress, destinationAddress, Packet::Type::forward));
-            destination->startAntDiscoveryPhase(std::make_shared<Packet>(destinationAddress, senderAddress, Packet::Type::backward));
-            source->sendPacket(packet);
-        }
+
+        //Forward search and backward search must happen sequentially
+        tPacketptr forwardAnt = std::make_shared<Packet>(senderAddress, destinationAddress, Packet::Type::forward);
+        source->sendPacket(1111, forwardAnt);
+        for(int i=0; i < 20; ++i)
+            tick();
+        tPacketptr backwardAnt = std::make_shared<Packet>(destinationAddress, senderAddress, Packet::Type::backward);
+        destination->sendPacket(8888, backwardAnt);
+        for(int i=0; i < 20; ++i)
+            tick();
+        source->sendPacket(6666, packet); //TODO how to provide first address?
+        for(int i=0; i < 20; ++i)
+            tick();
 
         cout<<"\n### Showing address of graph's nodes and it's routing entries \n";
         for (auto node : nodes) {
@@ -53,4 +58,16 @@ void Graph::sendData(int senderAddress, int destinationAddress) {
     } else {
         std::cout << "No such node" << std::endl;
     }
+}
+
+void Graph::tick() {
+
+    cout<<"\n!!!!!!!!!!!!!!!!!!!!! TICK !!!!!!!!!!!!!!!!!!!!!!!!! \n";
+    
+    std::for_each(nodes.begin(), nodes.end(), [&](std::shared_ptr<Node> node) {
+        node->tick();
+    });
+    std::for_each(nodes.begin(), nodes.end(), [&](std::shared_ptr<Node> node) {
+        node->postTick();
+    });
 }
