@@ -4,7 +4,8 @@
  *  Created on: Jan 11, 2017
  *      Author: fero
  */
-
+#include <time.h>
+#include <cstdlib>
 #include "model/Graph.h"
 
 using namespace std;
@@ -13,9 +14,11 @@ Graph mockSimpleGraph();
 
 typedef std::shared_ptr<Node> tNodeptr;
 
-static Graph graph;
+extern Graph graph;
+Graph graph;
 
 int main(){
+    srand(time(NULL)); //it has global effect
 
     graph = mockSimpleGraph();
 
@@ -27,23 +30,14 @@ int main(){
 Graph mockSimpleGraph() {
 	Graph graph;
 
-	Node node1("S", 1);
-	Node node2("1", 2);
-	Node node3("2", 3);
-	Node node4("3", 4);
-	Node node5("4", 5);
-	Node node6("5", 6);
-	Node node7("6", 7);
-	Node node8("D", 8);
-
-    tNodeptr n1Ptr = std::make_shared<Node>(node1);
-    tNodeptr n2Ptr = std::make_shared<Node>(node2);
-    tNodeptr n3Ptr = std::make_shared<Node>(node3);
-    tNodeptr n4Ptr = std::make_shared<Node>(node4);
-    tNodeptr n5Ptr = std::make_shared<Node>(node5);
-    tNodeptr n6Ptr = std::make_shared<Node>(node6);
-    tNodeptr n7Ptr = std::make_shared<Node>(node7);
-    tNodeptr n8Ptr = std::make_shared<Node>(node8);
+    tNodeptr n1Ptr = std::make_shared<Node>("S", 1);
+    tNodeptr n2Ptr = std::make_shared<Node>("1", 2);
+    tNodeptr n3Ptr = std::make_shared<Node>("2", 3);
+    tNodeptr n4Ptr = std::make_shared<Node>("3", 4);
+    tNodeptr n5Ptr = std::make_shared<Node>("4", 5);
+    tNodeptr n6Ptr = std::make_shared<Node>("5", 6);
+    tNodeptr n7Ptr = std::make_shared<Node>("6", 7);
+    tNodeptr n8Ptr = std::make_shared<Node>("D", 8);
 
     n1Ptr->addNeighbour(n2Ptr);
     n2Ptr->addNeighbour(n1Ptr);

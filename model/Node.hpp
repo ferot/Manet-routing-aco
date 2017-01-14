@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <vector>
+#include <set>
 #include <utility>
 #include "RoutingEntry.hpp"
 #include "Packet.h"
@@ -16,14 +17,11 @@ class Node: public std::enable_shared_from_this<Node> {
 
 private:
 
-    std::vector<int> visitedForwardAnts;
-    std::vector<int> visitedBackwardAnts;
+    std::set<int> visitedAnts;
 
 private:
 
-    tRoutingEntryVec findDestinationEntries(Packet packet);
-    void startForwardAntPhase(int destinationAddress);
-    void startBackwardAntPhase(Packet packet);
+    tRoutingEntryVec findDestinationEntries(tPacketptr packet);
     std::shared_ptr<RoutingEntry> findBestPath (tRoutingEntryVec vec);
 public:
 
@@ -36,10 +34,10 @@ public:
     tNodeVec neighbours;
 
     void addNeighbour(std::shared_ptr<Node> node);
-    bool sendPacket(Packet packet);
-    void passForwardAnt(int previousAddress, Packet ant);
-    void passBackwardAnt(int previousAddress, Packet ant);
-    void updateRoutingEntry(Packet packet);
+    bool sendPacket(tPacketptr packet);
+    void startAntDiscoveryPhase(tPacketptr packet);
+    void passDiscoveryAnt(int previousAddress, tPacketptr ant);
+    void updateRoutingEntry(tPacketptr packet);
     std::shared_ptr<RoutingEntry> getEntryForDestinationAndHop(int dest, int hop);
 
 };

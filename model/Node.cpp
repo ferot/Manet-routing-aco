@@ -5,17 +5,17 @@
 
 using namespace std;
 
-static Graph graph;
+extern Graph graph;
 
 static void updatePherNodes(){
-tNodeVec nodes = graph.nodes;
+    tNodeVec nodes = graph.nodes;
 
-for_each(nodes.begin(),nodes.end(),[](shared_ptr<Node> &node){
-    for(auto entry: node->routingTable)
-    {
-        entry->evaporatePheromone();
-    }
-});
+    for_each(nodes.begin(),nodes.end(),[](shared_ptr<Node> &node){
+        for(auto entry: node->routingTable)
+        {
+            entry->evaporatePheromone();
+        }
+    });
 }
 
 // Constructors
@@ -32,38 +32,40 @@ void Node::addNeighbour(std::shared_ptr <Node> node) {
     }
 }
 
-bool Node::sendPacket(Packet packet) {
-
-    bool afterDiscovery = false;
-    tRoutingEntryVec entries = findDestinationEntries(packet);
+bool Node::sendPacket(tPacketptr packet) {
 
     updatePherNodes();
 
     //we have to check if we have entries and if we are not in destination node - to avoid sending discovery
-    if ((entries.size() == 0) && (address != packet.destinationAddress)) {
-		startForwardAntPhase(packet.destinationAddress);
-        //TODO : handle no route to destination case?
-        afterDiscovery = true;
-    } else {
-        if(address != packet.destinationAddress){
-       shared_ptr<RoutingEntry> bestPath = findBestPath(entries);
-       shared_ptr<Node> bestNode = NULL;
+    if (address != packet->destinationAddress) {
+        tRoutingEntryVec entries = findDestinationEntries(packet);
 
-       //find the best node by address
-       for(auto node : neighbours){
-           if(node->address == bestPath->nextHopAddress){
-               bestNode = node;
-               break;
-           }
-       }
+        if (entries.empty()) {
+            return false;
+        } 
+        else {
+            shared_ptr<RoutingEntry> bestPath = findBestPath(entries);
+            shared_ptr<Node> bestNode = NULL;
 
-       cout<< "\n### Packet in node @address: " << address<< "\n Now sending packet to Node @address :" << bestNode->address << endl;
-        bestNode->sendPacket(packet);
-        bestPath->increasePheromone();
+            //find the best node by address
+            for(auto node : neighbours){
+                if(node->address == bestPath->nextHopAddress){
+                    bestNode = node;
+                    break;
+                }
+            }
+
+            //TODO jeszcze trzeba zwiększyć feromony krawędzi, z której paczka przyszła
+            bestPath->increasePheromone();
+
+            cout<< "\n### Packet in node @address: " << address<< "\n Now sending packet to Node @address :" << bestNode->address << endl;
+            return bestNode->sendPacket(packet);
+        }
     }
-        else cout<<"\n### Packet reached destination!!!\n";
+    else {
+        cout<<"\n### Packet reached destination!!!\n";
+        return true;
     }
-    return afterDiscovery;
 }
 
 // Private
@@ -90,11 +92,11 @@ shared_ptr<RoutingEntry> Node::findBestPath (tRoutingEntryVec vec){
     return best;
 }
 
-tRoutingEntryVec Node::findDestinationEntries(Packet packet) {
+tRoutingEntryVec Node::findDestinationEntries(tPacketptr packet) {
     tRoutingEntryVec entries;
 
     for_each(routingTable.begin(), routingTable.end(), [&](std::shared_ptr<RoutingEntry> entry) {
-        if (entry->destinationAddress == packet.destinationAddress) {
+        if (entry->destinationAddress == packet->destinationAddress) {
             entries.push_back(entry);
         }
     });
@@ -102,105 +104,67 @@ tRoutingEntryVec Node::findDestinationEntries(Packet packet) {
     return entries;
 }
 
-void Node::startForwardAntPhase(int destinationAddress) {
-    Packet forwardAnt = Packet(address, destinationAddress);
+void Node::startAntDiscoveryPhase(tPacketptr ant) {
 
-    for (auto neighbour : neighbours) {
-        neighbour->passForwardAnt(address, forwardAnt);
+    if(std::get<1>(visitedAnts.insert(ant->sequenceNumber))) {
+        for (auto neighbour : neighbours) {
+            neighbour->passDiscoveryAnt(address, ant);
+        }
     }
 }
 
-void Node::passForwardAnt(int previousAddress, Packet ant) {
+void Node::passDiscoveryAnt(int previousAddress, tPacketptr ant) {
 
-    std::cout << endl << "### Passing Forward Ant. Previous address " << previousAddress << " current address " << address << std::endl;
+    //TODO trzeba dodać obsługę pętli
+    //TODO sposób przeszukiwania powoduje, że graf układa się inaczej niż w artykule
 
-    if (ant.destinationAddress == address) {
-        cout<< "\n### Sending Backward Ant \n";
-        startBackwardAntPhase(ant);
+    std::string ant_type;
+    switch (ant->type) {
+        case Packet::Type::forward:
+            ant_type = "forward";
+            break;
+        case Packet::Type::backward:
+            ant_type = "backward";
+            break;
+        default:
+            ant_type = "unexpected";
+    }
+    std::cout << endl << "### Passing " << ant_type << " ant. Previous address " << previousAddress << " current address " << address << std::endl;
 
-    } else {
+    std::shared_ptr<RoutingEntry> entry = getEntryForDestinationAndHop(ant->sourceAddress, previousAddress);
+    if (entry == NULL) {
+        cout << "@@@ Pushing entry onto Node's routingTable\n";
+        entry = std::make_shared<RoutingEntry>(RoutingEntry(ant->sourceAddress, previousAddress));
+        routingTable.push_back(entry);
+        entry->increasePheromone(); //TODO wartość feromonów jest obliczana w zależności od liczby aktualnie wykonanych hopek (źródło: artykuł).
+    }
+    
 
-        auto it = std::find(visitedForwardAnts.begin(), visitedForwardAnts.end(), ant.sequenceNumber);
-        if(it == visitedForwardAnts.end()) {
+    if(std::get<1>(visitedAnts.insert(ant->sequenceNumber))) { // if ant did not visit before
 
-            visitedForwardAnts.push_back(ant.sequenceNumber);
-
-            std::shared_ptr<RoutingEntry> entry = getEntryForDestinationAndHop(ant.sourceAddress, previousAddress);
-
-            if (entry == NULL) {
-                cout << "@@@ Pushing entry onto Node's routingTable\n";
-                entry = std::make_shared<RoutingEntry>(RoutingEntry(ant.sourceAddress, previousAddress));
-                routingTable.push_back(entry);
+        if (ant->destinationAddress == address) {
+            switch (ant->type) {
+                case Packet::Type::forward: {
+                    cout<< "\n### Forward Ant travelled to destination.\n";
+                    break;
+                }
+                case Packet::Type::backward:
+                    cout<< "\n### Backward Ant travelled back to source.\n";
+                    break;
+                default:
+                    throw std::runtime_error("Unexpected discovery ant type");
             }
-
-            entry->increasePheromone();
-
+        } 
+        else {
             for (auto neighbour : neighbours) {
-
-                std::cout << "Current " << address << " neighbour " << neighbour->address << " " << __FUNCTION__ << std::endl;
-
                 if (neighbour->address != previousAddress) {
-                    neighbour->passForwardAnt(address, ant);
+                    std::cout << "Current " << address << " neighbour " << neighbour->address << " " << __FUNCTION__ << std::endl;
+                    neighbour->passDiscoveryAnt(address, ant);
                 }
             }
-
-        } else {
-            cout << "### Deleted forward ant " << ant.sequenceNumber << " at Node " << name << endl;
         }
-    }
-
-}
-
-void Node::startBackwardAntPhase(Packet packet) {
-    std::cout << "### Backward Ant Sent" << std::endl;
-
-    Packet backwardAnt = Packet(address, packet.sourceAddress);
-    auto it = std::find(visitedBackwardAnts.begin(), visitedBackwardAnts.end(), packet.sequenceNumber);
-
-    if(it == visitedBackwardAnts.end()) {
-        visitedBackwardAnts.push_back(packet.sequenceNumber);
-
-        for (auto neighbour : neighbours) {
-            neighbour->passBackwardAnt(address, backwardAnt);
-        }
-
-    }
-}
-
-void Node::passBackwardAnt(int previousAddress, Packet ant) {
-
-    std::cout << std::endl << "### Passing Backward Ant. Previous address " << previousAddress << " current address " << address << std::endl;
-
-    if (ant.destinationAddress == address) {
-
-        // Start transmission
-
     } else {
-
-        auto it = std::find(visitedBackwardAnts.begin(), visitedBackwardAnts.end(), ant.sequenceNumber);
-        if(it == visitedBackwardAnts.end()) {
-
-            visitedBackwardAnts.push_back(ant.sequenceNumber);
-
-            std::shared_ptr<RoutingEntry> entry = getEntryForDestinationAndHop(ant.sourceAddress, previousAddress);
-
-            if (entry == NULL) {
-                entry = std::make_shared<RoutingEntry>(RoutingEntry(ant.sourceAddress, previousAddress));
-                routingTable.push_back(entry);
-            }
-            entry->increasePheromone();
-
-            for (auto neighbour : neighbours) {
-
-                    std::cout << "Current " << address << " neighbour " << neighbour->address << " " << __FUNCTION__ << std::endl;
-
-                    if (neighbour->address != previousAddress) {
-                        neighbour->passBackwardAnt(address, ant);
-                    }
-            }
-        } else {
-            cout << "### Deleted backward ant " << ant.sequenceNumber << " at Node " << name << endl;
-        }
+        cout << "### Ignoring " << ant_type << " ant " << ant->sequenceNumber << " at Node with address " << address << endl;
     }
 
 }

@@ -1,10 +1,10 @@
 #include "RoutingEntry.hpp"
 #include "Graph.h"
+#include <iostream>
 
 RoutingEntry::RoutingEntry(int dest, int nhop) : destinationAddress(dest),
-                                                                                     nextHopAddress(nhop),
-                                                                                     pheromone(0.0) {
-
+                                                 nextHopAddress(nhop),
+                                                 pheromone(0.0) {
 }
 
 void RoutingEntry::increasePheromone() {

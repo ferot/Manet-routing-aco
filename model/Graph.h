@@ -11,7 +11,6 @@
 
 const float PHEROMONE_DELTA = 0.05;
 const float EVAPORATION_FACTOR = 0.25;
-static void updatePherNodes();
 
 class Node;
 

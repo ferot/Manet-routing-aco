@@ -3,10 +3,8 @@
 //
 
 #include "Packet.h"
-#include <time.h>
 #include <cstdlib>
 
-Packet::Packet(int src, int dest) : sourceAddress(src), destinationAddress(dest) {
-    srand(time(NULL));
-    sequenceNumber = rand() % 1000000 +10000;
-}
+Packet::Packet(int src, int dest, Type type)
+  : sourceAddress(src), destinationAddress(dest), 
+    sequenceNumber(rand() % 1000000 +10000), type(type) {}
