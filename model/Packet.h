@@ -6,6 +6,7 @@
 #define MANET_ROUTING_ACO_PACKET_H
 
 #include <memory>
+#include <string>
 
 class Packet;
 typedef std::shared_ptr<Packet> tPacketptr;

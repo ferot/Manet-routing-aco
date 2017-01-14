@@ -89,6 +89,7 @@ bool Node::passRegularPacket(int previousAddress, tPacketptr packet)
 
             //TODO jeszcze trzeba zwiększyć feromony krawędzi, z której paczka przyszła
             bestPath->increasePheromone();
+            bestNode->increaseReverseEdgePheromone(packet->sourceAddress, address);
 
             cout<< "\n### Packet in node @address: " << address<< "\n Now sending packet to Node @address :" << bestNode->address << endl;
             bestNode->sendPacket(address, packet);
@@ -143,14 +144,14 @@ void Node::passDiscoveryAnt(int previousAddress, tPacketptr ant) {
                 sendPacket(address, backwardAnt);
             }
         } 
-        else {
+//        else {
             for (auto neighbour : neighbours) {
                 if (neighbour->address != previousAddress) {
                     std::cout << "Current " << address << " neighbour " << neighbour->address << " " << __FUNCTION__ << std::endl;
                     neighbour->sendPacket(address, ant);
                 }
             }
-        }
+//        }
     } else {
         cout << "### Ignoring " << ant->type_string << " ant " << ant->sequenceNumber << " at Node with address " << address << endl;
     }
@@ -205,4 +206,15 @@ std::shared_ptr<RoutingEntry> Node::getEntryForDestinationAndHop(int dest, int h
     });
 
     return entry;
+}
+
+void Node::increaseReverseEdgePheromone(int sourceAddress, int previousNode) {
+    std::shared_ptr<RoutingEntry> entry = getEntryForDestinationAndHop(sourceAddress, previousNode);
+    if (entry == NULL) {
+        entry = std::make_shared<RoutingEntry>(RoutingEntry(sourceAddress, previousNode));
+        routingTable.push_back(entry);
+        entry->increasePheromone();
+    } else {
+        entry->increasePheromone();
+    }
 }

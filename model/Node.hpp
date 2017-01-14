@@ -44,6 +44,7 @@ public:
     void sendPacket(int fromHop, tPacketptr packet);
     void postTick();
     void tick();
+    void increaseReverseEdgePheromone(int sourceAddress, int previousNode);
 
     void updateRoutingEntry(tPacketptr packet);
     std::shared_ptr<RoutingEntry> getEntryForDestinationAndHop(int dest, int hop);

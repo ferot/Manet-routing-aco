@@ -49,6 +49,15 @@ void Graph::printRoutingTables() {
     for (auto node : nodes) {
         cout << node->address << " -----" << endl;
 
+        sort(node->routingTable.begin(), node->routingTable.end(),
+             [](const std::shared_ptr<RoutingEntry> & a, const std::shared_ptr<RoutingEntry> & b) -> bool {
+                 if (a->destinationAddress == b->destinationAddress) {
+                     return a->nextHopAddress < b->nextHopAddress;
+                 } else {
+                     return a->destinationAddress < b->destinationAddress;
+                 }
+             });
+
         for (auto entry : node->routingTable) {
             cout << "Destination " << entry->destinationAddress << " next hop " << entry->nextHopAddress << " pheromone " << entry->pheromone << endl;
         }
