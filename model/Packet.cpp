@@ -7,7 +7,7 @@
 
 Packet::Packet(int src, int dest, Type type)
   : sourceAddress(src), destinationAddress(dest), 
-    sequenceNumber(rand() % 1000000 +10000), type(type) 
+    sequenceNumber(rand() % 1000000 +10000), type(type), hops_count(0)
 {
     switch (type) {
         case Type::forward:

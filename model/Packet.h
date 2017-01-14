@@ -24,6 +24,7 @@ enum class Type {regular, forward, backward, route_error, duplicate_error};
     const int sequenceNumber;
     int destinationAddress;
     int sourceAddress;
+    unsigned hops_count;
     std::string type_string;
 };
 

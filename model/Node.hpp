@@ -11,23 +11,23 @@ class Node;
 
 typedef std::vector<std::shared_ptr<RoutingEntry> > tRoutingEntryVec;
 typedef std::vector<std::shared_ptr<Node> > tNodeVec;
-typedef std::pair<std::shared_ptr<RoutingEntry>,float> tRentryProbPair;
 
 class Node: public std::enable_shared_from_this<Node> {
 
 private:
 
-    std::set<int> visitedAnts;
+    std::set<std::pair<int, int>> visitedAnts; // pair of ant sequence number and source hop
     std::vector<std::pair<int, tPacketptr>> entryBuffer;
     std::vector<std::pair<int, tPacketptr>> internalEntryBuffer;
 
 private:
 
     tRoutingEntryVec findDestinationEntries(tPacketptr packet);
-    std::shared_ptr<RoutingEntry> findBestPath (tRoutingEntryVec vec);
+    std::shared_ptr<RoutingEntry> drawNextHop (tRoutingEntryVec vec);
 
     void passDiscoveryAnt(int previousAddress, tPacketptr ant);
-    void passRegularPacket(tPacketptr packet);
+    bool passRegularPacket(int previousAddress, tPacketptr packet);
+    void passLoopPacket(tPacketptr packet);
 
 public:
 
