@@ -133,9 +133,12 @@ void Node::passDiscoveryAnt(int previousAddress, tPacketptr ant) {
         cout << "@@@ Pushing entry onto Node's routingTable" << std::endl;
         entry = std::make_shared<RoutingEntry>(RoutingEntry(ant->sourceAddress, previousAddress));
         routingTable.push_back(entry);
-        entry->increasePheromone(); //TODO wartość feromonów jest obliczana w zależności od liczby aktualnie wykonanych hopek (źródło: artykuł).
     }
-    
+
+    if (entry != NULL) {
+        entry->increasePheromoneDepeningOnHops(ant->hops_count);
+    }
+
     if(std::get<1>(visitedAnts.insert(std::make_pair(ant->sequenceNumber, previousAddress)))) { // if ant did not visit before
         if (ant->destinationAddress == address) {
             cout<< "### "<< ant->type_string <<" Ant finished its journey." << std::endl;

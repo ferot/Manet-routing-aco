@@ -20,9 +20,9 @@ int main(){
     Graph graph = mockSimpleGraph();
 
     
-    for (int k=1; k < 30000; ++k){
+    for (int k=1; k < 10000; ++k){
         graph.sendData(rand() % 8 + 1, rand() % 8 + 1);
-        for(int i=0; i < rand() % 10; ++i) graph.tick();
+        for(int i=0; i < 10 + rand() % 20; ++i) graph.tick();
     }
 
     for(int i=0; i < 20; ++i)

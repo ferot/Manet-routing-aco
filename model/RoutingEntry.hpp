@@ -18,6 +18,7 @@ public:
     float pheromone;
 
     void increasePheromone();
+    void increasePheromoneDepeningOnHops(int hops);
     void evaporatePheromone();
 
 };
