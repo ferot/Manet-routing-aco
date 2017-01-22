@@ -6,22 +6,26 @@
  */
 #include <time.h>
 #include <cstdlib>
+#include <fstream>
+#include <string>
 #include "model/Graph.h"
+#include "model/json.hpp"
 
 using namespace std;
+using json = nlohmann::json;
 
 Graph mockSimpleGraph();
+Graph loadGraph(std::string filename);
 
 typedef std::shared_ptr<Node> tNodeptr;
 
 int main(){
     srand(time(NULL)); //it has global effect
 
-    Graph graph = mockSimpleGraph();
+    Graph graph = loadGraph("graph.json");
 
-    
-    for (int k=1; k < 10000; ++k){
-        graph.sendData(rand() % 8 + 1, rand() % 8 + 1);
+    for (int k=1; k < 1000; ++k){
+        graph.sendData(rand() % graph.nodes.size(), rand() % graph.nodes.size());
         for(int i=0; i < 10 + rand() % 20; ++i) graph.tick();
     }
 
@@ -76,6 +80,35 @@ Graph mockSimpleGraph() {
     graph.addNode(n6Ptr);
     graph.addNode(n7Ptr);
     graph.addNode(n8Ptr);
+
+    return graph;
+}
+
+
+Graph loadGraph(std::string filename) {
+    std::ifstream inputStream(filename);
+    json graphJSON;
+    inputStream >> graphJSON;
+
+    Graph graph;
+
+    for (auto jsonNode : graphJSON["nodes"]) {
+        int nodeNumber = jsonNode[0];
+        std::string nodeName = std::to_string(nodeNumber);
+        tNodeptr node = std::make_shared<Node>(nodeName, nodeNumber);
+        graph.addNode(node);
+    }
+
+    for (auto jsonEdge : graphJSON["edges"]) {
+        int fromNodeNumber = jsonEdge[0];
+        int toNodeNumber = jsonEdge[1];
+
+        tNodeptr fromNode = graph.nodes[fromNodeNumber];
+        tNodeptr toNode = graph.nodes[toNodeNumber];
+
+        fromNode->addNeighbour(toNode);
+        toNode->addNeighbour(fromNode);
+    }
 
     return graph;
 }

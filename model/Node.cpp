@@ -87,7 +87,6 @@ bool Node::passRegularPacket(int previousAddress, tPacketptr packet)
                 }
             }
 
-            //TODO jeszcze trzeba zwiększyć feromony krawędzi, z której paczka przyszła
             bestPath->increasePheromone();
             bestNode->increaseReverseEdgePheromone(packet->sourceAddress, address);
 

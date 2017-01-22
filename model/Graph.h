@@ -10,7 +10,7 @@
 #include <memory>
 
 const float PHEROMONE_DELTA = 0.1;
-const float EVAPORATION_FACTOR = 0.01;
+const float EVAPORATION_FACTOR = 0.04;
 
 class Node;
 
