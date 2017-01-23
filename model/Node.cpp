@@ -114,13 +114,13 @@ shared_ptr<RoutingEntry> Node::drawNextHop (tRoutingEntryVec vec){
 
     double random = ((float)rand()/(float)RAND_MAX) * pheromoneSum;
 
-    int choosenHop = -1;
-    while(random >= 0.0) {
-        ++choosenHop;
-        random -= vec[choosenHop]->pheromone;
+    unsigned int choosenHop = 0;
+    while(random >= 0.0 && vec.size() > choosenHop-1) {
+                random -= vec.at(choosenHop)->pheromone;
+                ++choosenHop;
     }
 
-    return vec[choosenHop];
+    return vec.at(choosenHop);
 }
 
 void Node::passDiscoveryAnt(int previousAddress, tPacketptr ant) {
