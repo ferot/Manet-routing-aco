@@ -3,21 +3,25 @@
 #include <memory>
 #include "Node.hpp"
 
-class Node;
+constexpr float PHEROMONE_DELTA = 0.1;
+constexpr float EVAPORATION_FACTOR = 0.005;
 
 class RoutingEntry {
-private:
 
 public:
-
-    RoutingEntry() {}
-    RoutingEntry(int dest, int nhop);
-
-    int destinationAddress;
-    int nextHopAddress;
     float pheromone;
 
-    void increasePheromone();
-    void evaporatePheromone();
+    RoutingEntry() : pheromone(0.0f) 
+    {}
+
+    void increasePheromone()
+    {
+        pheromone += PHEROMONE_DELTA;
+    }
+
+    void evaporatePheromone()
+    {
+        pheromone = (1-EVAPORATION_FACTOR)*pheromone;
+    }
 
 };

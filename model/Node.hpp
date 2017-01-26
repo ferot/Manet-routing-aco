@@ -9,7 +9,7 @@
 class RoutingEntry;
 class Node;
 
-typedef std::vector<std::shared_ptr<RoutingEntry> > tRoutingEntryVec;
+typedef std::vector<std::shared_ptr<RoutingEntry> > tRoutingEntryVec; //jest ograniczona pamięć na tę tablicę (shared?), a jeszcze dodatkowo jest bufor na pakiety
 typedef std::vector<std::shared_ptr<Node> > tNodeVec;
 
 class Node: public std::enable_shared_from_this<Node> {
