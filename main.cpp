@@ -24,8 +24,9 @@ int main(){
 
     Graph graph = loadGraph("graph.json");
 
-    for (int k=1; k < 1000; ++k){
-        graph.sendData(rand() % graph.nodes.size(), rand() % graph.nodes.size());
+    for (int k=1; k < 100; ++k){
+//        graph.sendData(rand() % graph.nodes.size(), rand() % graph.nodes.size());
+        graph.sendData(21, 2);
         for(int i=0; i < 10 + rand() % 20; ++i) graph.tick();
     }
 

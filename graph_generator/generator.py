@@ -14,7 +14,7 @@ def load(fname):
     G.add_edges_from(d['edges'])
     return G
 
-graph = nx.gnm_random_graph(15, 25)
+graph = nx.gnm_random_graph(25, 44)
 nx.draw(graph, pos=nx.spring_layout(graph), with_labels=True)
 matplotlib.pyplot.savefig("graph.png")
 save(graph, "graph.json")
