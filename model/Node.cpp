@@ -7,9 +7,11 @@
 #include <cstring>
 #include <memory>
 #include <iostream>
+#include <fstream>
 
 #include "Packet.h"
 #include "RoutingEntry.hpp"
+#include "json.hpp"
 
 constexpr int MAX = 100000;
 constexpr int MAX_BUFFER_SIZE = 10;
@@ -333,6 +335,14 @@ void nodesTick(PacketBuffer* incomming_buffers,
 
 
 
+
+
+
+
+
+
+
+
 //liczba bloków to liczba węzłów. Węzłów może być aż do 2^16-1, czyli 65535
 //liczba wątków to maksymalna liczba pakietów do przetworzenia na raz. Moja CUDA umożliwia stworzenie 1024 wątków.
 int main()
@@ -344,9 +354,22 @@ int main()
     RoutingEntry routing_table[nodes_num][nodes_num][nodes_num];
 
     //TODO initialize values
-    // routing_table[1][4][2].pheromone = 0.5;
-    // routing_table[2][4][3].pheromone = 0.5;
-    // routing_table[3][4][4].pheromone = 0.5;
+    std::ifstream inputStream("graph.json");
+    nlohmann::json graphJSON;
+    inputStream >> graphJSON;
+
+    for (auto jsonEdge : graphJSON["edges"]) {
+        int fromNodeNumber = jsonEdge[0];
+        int toNodeNumber = jsonEdge[1];
+
+        for (int i=0; i < nodes_num; ++i)
+        {
+            routing_table[fromNodeNumber][i][toNodeNumber].pheromone = 1.0;
+            routing_table[toNodeNumber][i][fromNodeNumber].pheromone = 1.0;
+        }
+    }
+
+
 
 
     PacketBuffer* device_incomming_buffer_ptr;
@@ -377,8 +400,8 @@ int main()
     memcpy(device_routing_table_ptr, routing_table, total_elem_num*sizeof(RoutingEntry));
 
 
-    const unsigned from = 1;
-    const unsigned to = 9;
+    const unsigned from = 4;
+    const unsigned to = 8;
     int thread_num = 3;
 
     unsigned packet_sequence = 0;

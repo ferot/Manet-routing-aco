@@ -3,14 +3,14 @@
 #include <cmath>
 
 constexpr float PHEROMONE_DELTA = 0.1;
-constexpr float EVAPORATION_FACTOR = 0.05;
+constexpr float EVAPORATION_FACTOR = 0.01;
 
 class RoutingEntry {
 
 public:
     float pheromone;
 
-    RoutingEntry() : pheromone(1.0f) 
+    RoutingEntry() : pheromone(-1.0f) 
     {}
 
     void increasePheromone(unsigned num_hops)
