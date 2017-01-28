@@ -1,132 +1,167 @@
-#include "Node.hpp"
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
-#include <curand.h>
-#include <curand_kernel.h>
-#define MAX 100000
-#define SIZE 100
+// #include <curand.h>
+// #include <curand_kernel.h>
 
+#include <cstdlib>
+#include <ctime>
+#include <cmath>
+#include <cstring>
+#include <memory>
+#include <iostream>
 
+#include "Packet.h"
+#include "RoutingEntry.hpp"
+
+constexpr int MAX = 100000;
+constexpr int MAX_BUFFER_SIZE = 10;
 constexpr int nodes_num = 5;
+constexpr long total_elem_num = nodes_num * nodes_num * nodes_num;
 
-typedef thrust::device_vector<Packet> PacketBuffer;
-
-struct PacketBuffer
+class PacketBuffer
 {
-    int size_;
+public:
+    PacketBuffer() : num_of_elements_(0) {}
     int num_of_elements_;
-    Packet* buffer_;
+    Packet buffer_[MAX_BUFFER_SIZE];
+
+    bool addPacket(Packet& packet)
+    {
+        if (num_of_elements_ == MAX_BUFFER_SIZE)
+        {
+            return false;
+        }
+        else
+        {
+            buffer_[num_of_elements_] = packet;
+            num_of_elements_ += 1;
+            return true;
+        }
+    }
+};
+
+/*__device__*/ 
+int calcElem(int node, int target, int neighbour)
+{
+    return (node*nodes_num + target)*nodes_num  + neighbour;
 }
 
 
-__device__ int drawNextHop(RoutingEntry* routing_for_neighbours, int neighbours_num)
+/*__device__*/ 
+int drawNextHop(RoutingEntry* routing_for_neighbours, int node, int target)
 {
     float pheromoneSum = 0.0;
 
     //count sum of pheromones for available routes
-    for (int i=0; i < neighbours_num; ++i)
+    for (int i=0; i < nodes_num; ++i)
     {
-        float pheromone = routing_for_neighbours[i].pheromone;
+        int elem = calcElem(node, target, i);
+        float pheromone = routing_for_neighbours[elem].pheromone;
         if (pheromone > 0.0)
         {
             pheromoneSum += pheromone;
         }
     }
 
-    curandState_t state; //TODO initialize this only once
-    curand_init(pheromoneSum, 0, 0, &state);
-    result = curand(&state) % MAX;
-    float random = (result/(float)MAX) * pheromoneSum;
+    // curandState_t state; //TODO initialize this only once
+    // curand_init(pheromoneSum, 0, 0, &state);
+    // result = curand(&state) % MAX;
+    float rand_num = std::rand();
+    float part = rand_num / (float)RAND_MAX;
+    float random = part * pheromoneSum;
 
     int choosenHop = -1;
-    while(random >= 0.0) {
+    while(random > 0.0) {
         ++choosenHop;
-        random -= routing_for_neighbours[choosenHop].pheromone;
+        int elem = calcElem(node, target, choosenHop);
+        float pheromone = routing_for_neighbours[elem].pheromone;
+        if (pheromone > 0.0) // if is my neighbour
+        {
+            random -=  pheromone;
+        }
     }
 
     return choosenHop;
 }
 
+struct PseudoCuda {
+    int x;
+};
+
 
 // TO się musi wykonać sekwencyjnie. Czasu nie oszukasz. Ale może obejdzie się bez kopiowania do hosta
 // [node][target][neighbour]
-__global__ void nodesTick(PacketBuffer* incomming_buffers[][nodes_num][nodes_num], 
-                          PacketBuffer* outgoing_buffers[][nodes_num][nodes_num], RoutingEntry* routing_table[][nodes_num][nodes_num])
+
+/*__global__*/ 
+void nodesTick(PacketBuffer* incomming_buffers, 
+               PacketBuffer* outgoing_buffers, 
+               RoutingEntry* routing_table,
+               int thread_num, int block_num, int thread_dim, int block_dim)
 {
-    __shared__ RoutingEntry[blockDim.x][blockDim.x] local_routing_table;
+    PseudoCuda blockIdx, blockDim, threadIdx, threadDim;
+    blockIdx.x = block_num;
+    blockDim.x = block_dim;
+    threadIdx.x = thread_num;
+    threadDim.x = thread_dim;
 
 
-    int node = blockIdx.x;
+    const int node = blockIdx.x;
     for (int target = threadIdx.x; target < blockDim.x; target += threadDim.x)
     {
-        //Copying local routing table
-        memcpy(local_routing_table[target], 
-               routing_table[node][target], 
-               blockDim.x * sizeof(RoutingEntry));
-
-        // updating whole routing table. TODO Do we have to synchronize after that? Packet never change its target.
+        // updating routing table.
         for (int neighbour = 0; neighbour < blockDim.x; ++neighbour)
         {
-            if (local_routing_table[target][neighbour].pheromone > 0.0)
+            RoutingEntry& routing_entry = routing_table[calcElem(node, target, neighbour)];
+            if (routing_entry.pheromone > 0.0)
             {
                 routing_entry.evaporatePheromone();
             }
+            outgoing_buffers[calcElem(neighbour, target, node)].num_of_elements_ = 0;
         }
 
         for (int prev_hop = 0; prev_hop < blockDim.x; ++prev_hop) //neighbours from which we reived packets
         {
-            if (local_routing_table[target][prev_hop].pheromone < 0.0)
-                continue; //Not a neighbour
+            // if (routing_table[calcElem(node, target, prev_hop)].pheromone < 0.0)
+            //     continue; //Not a neighbour
 
 
-            PacketBuffer& current_incoming_packet_buffer = incomming_buffers[node][target][prev_hop];
+            PacketBuffer& current_incoming_packet_buffer = incomming_buffers[calcElem(node, target, prev_hop)];
 
-            if (node != target)
+            for (int i=0; i< current_incoming_packet_buffer.num_of_elements_; ++i)
             {
-                for (int i=0; i< current_incoming_packet_buffer.num_of_elements_; ++i)
+                Packet& current_packet = current_incoming_packet_buffer.buffer_[i];
+                // TODO just now only regular packets
+                // processPacket(node, current_packet); //TODO where to copy (send)? Potentially many next hops.
+
+                //Increase pheromone for the previous hop
+                routing_table[calcElem(node, current_packet.sourceAddress, prev_hop)].increasePheromone();
+
+                if (node == target)
                 {
-                    Packet& current_packet = current_incoming_packet_buffer.buffer_[i];
-                    // TODO just now only regular packets
-                    // processPacket(node, current_packet); //TODO where to copy (send)? Potentially many next hops.
-
-                    //Increase pheromone for the previous hop
-                    local_routing_table[current_packet.sourceAddress][prev_hop].increasePheromone();
-
+                    std::cout << "Packet " << current_packet.sequenceNumber << " reached node " << node << " after " << current_packet.hops_count << " hops." << std::endl;
+                }
+                else
+                {
                     // TODO temporarly here
-                    int next_hop = drawNextHop(local_routing_table[target], blockDim.x);
+                    int next_hop = drawNextHop(routing_table, node, target);
                     current_packet.hops_count += 1;
 
                     // sending packet
-                    PacketBuffer& outgoing_packet_buffer = outgoing_buffers[next_hop][target][node].push_back(current_packet);
-
-                    if (outgoing_packet_buffer.size_ == outgoing_packet_buffer.num_of_elements_)
+                    PacketBuffer& outgoing_packet_buffer = outgoing_buffers[calcElem(next_hop, target, node)];
+                    bool added = outgoing_packet_buffer.addPacket(current_packet);
+                    if (!added)
                     {
-                        Packet* new_bigger_buffer = new Packet[outgoing_packet_buffer.size_ + SIZE];
-                        memcopy(outgoing_packet_buffer.buffer_, 
-                                new_bigger_buffer, 
-                                outgoing_packet_buffer.num_of_elements_ * sizeof(Packet));
-                        delete[] outgoing_packet_buffer.buffer_;
-                        outgoing_packet_buffer.buffer_ = new_bigger_buffer;
-                        outgoing_packet_buffer.size_ += SIZE;
+                        std::cout << "At node " << node << " packet " << current_packet.sequenceNumber << " that goes to " << next_hop << " was dropped due to exceeded buffer." << std::endl;
                     }
 
-                    outgoing_packet_buffer.buffer_[outgoing_packet_buffer.num_of_elements_] = current_packet;
-                    outgoing_packet_buffer.num_of_elements_ += 1;
+                    routing_table[calcElem(node, target, next_hop)].increasePheromone();
 
-                    local_routing_table[target][next_hop].increasePheromone();
+                    std::cout << "At node " << node << " packet " << current_packet.sequenceNumber << " whose target is " << target << " came from " << prev_hop << " and goes to " << next_hop << "." << std::endl;
                 }
+
             }
             
             //free incoming buffer
-            delete[] current_incoming_packet_buffer.buffer_;
-            current_incoming_packet_buffer.buffer_ = new Packet[SIZE];
-            current_incoming_packet_buffer.size_ = SIZE;
             current_incoming_packet_buffer.num_of_elements_ = 0;
         }
-        
-        memcpy(routing_table[node][target],
-               my_routing_table[target], 
-               blockDim.x * sizeof(RoutingEntry));
     }
 }
 
@@ -298,44 +333,84 @@ __global__ void nodesTick(PacketBuffer* incomming_buffers[][nodes_num][nodes_num
 
 
 
-
 //liczba bloków to liczba węzłów. Węzłów może być aż do 2^16-1, czyli 65535
 //liczba wątków to maksymalna liczba pakietów do przetworzenia na raz. Moja CUDA umożliwia stworzenie 1024 wątków.
 int main()
 {
+    std::srand(std::time(0));
+
     PacketBuffer incomming_buffer[nodes_num][nodes_num][nodes_num]; //Should this also be a thrust::device_vector ?
     PacketBuffer outgoing_buffer[nodes_num][nodes_num][nodes_num];
     RoutingEntry routing_table[nodes_num][nodes_num][nodes_num];
-    routing_table[1][4][2] = 0.5;
-    routing_table[2][4][3] = 0.5;
-    routing_table[3][4][3] = 0.5;
 
     //TODO initialize values
-    thrust::host_vector<Packet> initial_packets;
-    initial_packets.emplace(1, 0);
-    incomming_buffer[1][4][1] = initial_packets;
+    // routing_table[1][4][2].pheromone = 0.5;
+    // routing_table[2][4][3].pheromone = 0.5;
+    // routing_table[3][4][4].pheromone = 0.5;
 
-    PacketBuffer* device_incomming_buffer_ptr[][nodes_num][nodes_num];
-    PacketBuffer* device_outgoing_buffer_ptr[][nodes_num][nodes_num];
-    RoutingEntry* device_routing_table_ptr[][nodes_num][nodes_num];
 
-    cudaMalloc(&device_incomming_buffer_ptr, std::pow(nodes_num, 3)*sizeof(PacketBuffer));
-    cudaMalloc(&device_outgoing_buffer_ptr, std::pow(nodes_num, 3)*sizeof(PacketBuffer));
-    cudaMalloc(&device_routing_table_ptr, std::pow(nodes_num, 3)*sizeof(RoutingEntry));
-
-    cudaMemcpy(incomming_buffer, device_incomming_buffer_ptr, std::pow(nodes_num, 3)*sizeof(PacketBuffer), cudaMemcpyHostToDevice);
-    cudaMemcpy(outgoing_buffer, device_outgoing_buffer_ptr, std::pow(nodes_num, 3)*sizeof(PacketBuffer), cudaMemcpyHostToDevice);
-    cudaMemcpy(routing_table, device_routing_table_ptr, std::pow(nodes_num, 3)*sizeof(RoutingEntry), cudaMemcpyHostToDevice);
+    PacketBuffer* device_incomming_buffer_ptr;
+    PacketBuffer* device_outgoing_buffer_ptr;
+    RoutingEntry* device_routing_table_ptr;
 
 
 
 
 
-    for(unsigned i=0; i<3; ++i)
+
+
+    // cudaMalloc(&device_incomming_buffer_ptr, total_elem_num*sizeof(PacketBuffer));
+    // cudaMalloc(&device_outgoing_buffer_ptr, total_elem_num*sizeof(PacketBuffer));
+    // cudaMalloc(&device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry));
+
+    // cudaMemcpy(incomming_buffer, device_incomming_buffer_ptr, total_elem_num*sizeof(PacketBuffer), cudaMemcpyHostToDevice);
+    // cudaMemcpy(outgoing_buffer, device_outgoing_buffer_ptr, total_elem_num*sizeof(PacketBuffer), cudaMemcpyHostToDevice);
+    // cudaMemcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry), cudaMemcpyHostToDevice);
+
+
+    device_incomming_buffer_ptr = (PacketBuffer* ) malloc(total_elem_num*sizeof(PacketBuffer));
+    device_outgoing_buffer_ptr = (PacketBuffer* ) malloc(total_elem_num*sizeof(PacketBuffer));
+    device_routing_table_ptr = (RoutingEntry* ) malloc(total_elem_num*sizeof(RoutingEntry));
+
+    memcpy(device_incomming_buffer_ptr, incomming_buffer, total_elem_num*sizeof(PacketBuffer));
+    memcpy(device_outgoing_buffer_ptr, outgoing_buffer, total_elem_num*sizeof(PacketBuffer));
+    memcpy(device_routing_table_ptr, routing_table, total_elem_num*sizeof(RoutingEntry));
+
+
+
+
+
+
+
+
+
+    int thread_num = 3;
+
+    int packet_sequence = 0;
+
+    for(int ticks=0; ticks<1000; ++ticks)
     {
-        nodesTick<<<nodes_num, 5>>>(device_incomming_buffer_ptr, 
-                                    device_outgoing_buffer_ptr, 
-                                    device_routing_table_ptr);
+        if (ticks%100000 == 0)
+        {
+            PacketBuffer& buffer = device_incomming_buffer_ptr[calcElem(1, 4, 1)];
+            Packet packet(1, packet_sequence++);
+            buffer.addPacket(packet);
+        }
+
+    //     nodesTick<<<nodes_num, 5>>>(device_incomming_buffer_ptr, 
+    //                                 device_outgoing_buffer_ptr, 
+    //                                 device_routing_table_ptr);
+        for (int j = 0 ; j<nodes_num; ++j)
+        {
+            for (int i = 0 ; i<thread_num; ++i)
+            {
+                nodesTick(device_incomming_buffer_ptr, 
+                          device_outgoing_buffer_ptr, 
+                          device_routing_table_ptr, 
+                          i, j, thread_num, nodes_num);
+            }
+        }
+        
         std::swap(device_incomming_buffer_ptr, 
                   device_outgoing_buffer_ptr);
     }
@@ -343,19 +418,40 @@ int main()
 
 
 
-    cudaMemcpy(incomming_buffer, device_incomming_buffer_ptr, std::pow(nodes_num, 3)*sizeof(PacketBuffer), cudaMemcpyDeviceToHost);
-    cudaMemcpy(outgoing_buffer, device_outgoing_buffer_ptr, std::pow(nodes_num, 3)*sizeof(PacketBuffer), cudaMemcpyDeviceToHost);
-    cudaMemcpy(routing_table, device_routing_table_ptr, std::pow(nodes_num, 3)*sizeof(RoutingEntry), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(incomming_buffer, device_incomming_buffer_ptr, total_elem_num*sizeof(PacketBuffer), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(outgoing_buffer, device_outgoing_buffer_ptr, total_elem_num*sizeof(PacketBuffer), cudaMemcpyDeviceToHost);
+    // cudaMemcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry), cudaMemcpyDeviceToHost);
 
-    //TODO check the results
+    memcpy(incomming_buffer, device_incomming_buffer_ptr, total_elem_num*sizeof(PacketBuffer));
+    memcpy(outgoing_buffer, device_outgoing_buffer_ptr, total_elem_num*sizeof(PacketBuffer));
+    memcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry));
 
+    //check the results
+    std::cout << "Routing table:\n";
+    for (int i=0; i<nodes_num; ++i)
+    {
+        std::cout << "NODE: " << i << "\n";
+        for (int j=0; j<nodes_num; ++j)
+        {
+            std::cout << "\ttarget: " << j << "\n";
+            for (int k=0; k<nodes_num; ++k)
+            {
+                std::cout << "\t\tneghbour: " << k << " - " << routing_table[i][j][k].pheromone << "\n";
+            }
+        }
+    }
+    std::cout << std::flush;
 
 
     
 
 
 
-    cudaFree(device_incomming_buffer_ptr);
-    cudaFree(device_outgoing_buffer_ptr);
-    cudaFree(device_routing_table_ptr);
+    // cudaFree(device_incomming_buffer_ptr);
+    // cudaFree(device_outgoing_buffer_ptr);
+    // cudaFree(device_routing_table_ptr);
+
+    free(device_incomming_buffer_ptr);
+    free(device_outgoing_buffer_ptr);
+    free(device_routing_table_ptr);
 }
