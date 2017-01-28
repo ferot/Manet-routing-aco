@@ -64,3 +64,40 @@ void Graph::printRoutingTables() {
 
     }
 }
+
+int Graph::getShortestPath(int sourceAddress, int destinationAddress) {
+    std::shared_ptr<Node> firstNode = getNodeForAddress(sourceAddress);
+    int hopsCount = 0;
+
+    int nextNodeAddress = firstNode->getDeterministicNextHop(sourceAddress, destinationAddress);
+    std::shared_ptr<Node> nextNode = getNodeForAddress(nextNodeAddress);
+
+    if (nextNode == NULL) {
+        return -1;
+    }
+    hopsCount++;
+
+    while(nextNode->address != destinationAddress) {
+        int nextNodeAddress = nextNode->getDeterministicNextHop(sourceAddress, destinationAddress);
+        nextNode = getNodeForAddress(nextNodeAddress);
+        if (nextNode != NULL) {
+            hopsCount++;
+        } else {
+            return -1;
+        }
+    }
+
+    return hopsCount;
+
+}
+
+std::shared_ptr<Node> Graph::getNodeForAddress(int address) {
+
+    for (auto node : nodes) {
+        if (node->address == address) {
+            return node;
+        }
+    }
+
+    return NULL;
+}

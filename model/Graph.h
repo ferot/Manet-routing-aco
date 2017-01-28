@@ -21,6 +21,9 @@ class Graph {
     void sendData(int senderAddress, int destinationAddress);
     void tick();
     void printRoutingTables();
+    int getShortestPath(int sourceAddress, int destinationAddress);
+    std::shared_ptr<Node> getNodeForAddress(int address);
+
 };
 
 #endif //MANET_ROUTING_ACO_GRAPH_H

@@ -220,3 +220,27 @@ void Node::increaseReverseEdgePheromone(int sourceAddress, int previousNode) {
         entry->increasePheromone();
     }
 }
+
+int Node::getDeterministicNextHop(int sourceAddress, int destinationAddress) {
+
+    tRoutingEntryVec entries;
+
+    for_each(routingTable.begin(), routingTable.end(), [&](std::shared_ptr<RoutingEntry> entry) {
+        if (entry->destinationAddress == destinationAddress) {
+            entries.push_back(entry);
+        }
+    });
+
+    sort(entries.begin(), entries.end(),
+         [](const std::shared_ptr<RoutingEntry> & a, const std::shared_ptr<RoutingEntry> & b) -> bool
+         {
+             return a->pheromone > b->pheromone;
+         });
+
+    if (entries.empty() == false) {
+        return entries[0]->nextHopAddress;
+    } else {
+        return -1;
+    }
+
+}

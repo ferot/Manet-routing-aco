@@ -24,9 +24,12 @@ int main(){
 
     Graph graph = loadGraph("graph.json");
 
+    int testSource = 21;
+    int testDestination = 10;
+
     for (int k=1; k < 100; ++k){
 //        graph.sendData(rand() % graph.nodes.size(), rand() % graph.nodes.size());
-        graph.sendData(21, 2);
+        graph.sendData(testSource, testDestination);
         for(int i=0; i < 10 + rand() % 20; ++i) graph.tick();
     }
 
@@ -34,6 +37,9 @@ int main(){
         graph.tick();
 
     graph.printRoutingTables();
+
+    int shortestPath = graph.getShortestPath(testSource, testDestination);
+    cout << "Shortest path " << shortestPath << endl;
 
 	return 0;
 }

@@ -49,4 +49,6 @@ public:
     void updateRoutingEntry(tPacketptr packet);
     std::shared_ptr<RoutingEntry> getEntryForDestinationAndHop(int dest, int hop);
 
+    int getDeterministicNextHop(int sourceAddress, int destinationAddress);
+
 };
