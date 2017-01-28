@@ -13,7 +13,7 @@
 
 constexpr int MAX = 100000;
 constexpr int MAX_BUFFER_SIZE = 10;
-constexpr int nodes_num = 5;
+constexpr int nodes_num = 10;
 constexpr long total_elem_num = nodes_num * nodes_num * nodes_num;
 
 class PacketBuffer
@@ -132,7 +132,7 @@ void nodesTick(PacketBuffer* incomming_buffers,
                 // processPacket(node, current_packet); //TODO where to copy (send)? Potentially many next hops.
 
                 //Increase pheromone for the previous hop
-                routing_table[calcElem(node, current_packet.sourceAddress, prev_hop)].increasePheromone();
+                routing_table[calcElem(node, current_packet.sourceAddress, prev_hop)].increasePheromone(current_packet.hops_count);
 
                 if (node == target)
                 {
@@ -152,7 +152,7 @@ void nodesTick(PacketBuffer* incomming_buffers,
                         std::cout << "At node " << node << " packet " << current_packet.sequenceNumber << " that goes to " << next_hop << " was dropped due to exceeded buffer." << std::endl;
                     }
 
-                    routing_table[calcElem(node, target, next_hop)].increasePheromone();
+                    routing_table[calcElem(node, target, next_hop)].increasePheromone(current_packet.hops_count);
 
                     std::cout << "At node " << node << " packet " << current_packet.sequenceNumber << " whose target is " << target << " came from " << prev_hop << " and goes to " << next_hop << "." << std::endl;
                 }
@@ -377,24 +377,23 @@ int main()
     memcpy(device_routing_table_ptr, routing_table, total_elem_num*sizeof(RoutingEntry));
 
 
-
-
-
-
-
-
-
+    const unsigned from = 1;
+    const unsigned to = 9;
     int thread_num = 3;
 
-    int packet_sequence = 0;
+    unsigned packet_sequence = 0;
 
-    for(int ticks=0; ticks<1000; ++ticks)
+    for(int ticks=0; ticks<10000; ++ticks)
     {
-        if (ticks%100000 == 0)
+        if (ticks%3 == 0)
         {
-            PacketBuffer& buffer = device_incomming_buffer_ptr[calcElem(1, 4, 1)];
-            Packet packet(1, packet_sequence++);
+            PacketBuffer& buffer = device_incomming_buffer_ptr[calcElem(from, to, from)];
+            Packet packet(from, packet_sequence++);
             buffer.addPacket(packet);
+
+            PacketBuffer& buffer2 = device_incomming_buffer_ptr[calcElem(to, from, to)];
+            Packet packet1(to, packet_sequence++);
+            buffer2.addPacket(packet1);
         }
 
     //     nodesTick<<<nodes_num, 5>>>(device_incomming_buffer_ptr, 
