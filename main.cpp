@@ -11,26 +11,49 @@
 #include "model/Graph.h"
 #include "model/json.hpp"
 
+const int LENGTH_EPSILON = 0;
+
 using namespace std;
 using json = nlohmann::json;
 
 Graph mockSimpleGraph();
 Graph loadGraph(std::string filename);
+bool isPathLengthAcceptable(int length, int expectedLength);
 
 typedef std::shared_ptr<Node> tNodeptr;
 
-int main(){
+int main(int argc, char **argv){
     srand(time(NULL)); //it has global effect
 
     Graph graph = loadGraph("graph.json");
 
     int testSource = 21;
-    int testDestination = 10;
+    int testDestination = 2;
+    int expectedLength = 4;
 
-    for (int k=1; k < 100; ++k){
-//        graph.sendData(rand() % graph.nodes.size(), rand() % graph.nodes.size());
+    cout << argc << endl;
+
+    if (argc == 4) {
+        testSource = atoi(argv[1]);
+        testDestination = atoi(argv[2]);
+        expectedLength = atoi(argv[3]);
+    }
+
+    // TODO: Limit iterations
+    int iterations = 0;
+
+    int currentPathLength = 99999;
+
+    while (!isPathLengthAcceptable(currentPathLength, expectedLength)) {
         graph.sendData(testSource, testDestination);
         for(int i=0; i < 10 + rand() % 20; ++i) graph.tick();
+
+        int newLength = graph.getShortestPath(testSource, testDestination);
+        if (newLength != -1) {
+            currentPathLength = newLength;
+        }
+
+        iterations++;
     }
 
     for(int i=0; i < 20; ++i)
@@ -39,7 +62,7 @@ int main(){
     graph.printRoutingTables();
 
     int shortestPath = graph.getShortestPath(testSource, testDestination);
-    cout << "Shortest path " << shortestPath << endl;
+    cout << "Shortest path " << shortestPath << " Iterations " << iterations << endl;
 
 	return 0;
 }
@@ -91,7 +114,6 @@ Graph mockSimpleGraph() {
     return graph;
 }
 
-
 Graph loadGraph(std::string filename) {
     std::ifstream inputStream(filename);
     json graphJSON;
@@ -118,4 +140,14 @@ Graph loadGraph(std::string filename) {
     }
 
     return graph;
+}
+
+bool isPathLengthAcceptable(int length, int expectedLength) {
+
+    if ((expectedLength - LENGTH_EPSILON) <= length && (expectedLength + LENGTH_EPSILON) >= length) {
+        return  true;
+    } else {
+        return false;
+    }
+
 }

@@ -76,9 +76,18 @@ int Graph::getShortestPath(int sourceAddress, int destinationAddress) {
         return -1;
     }
     hopsCount++;
+    vector<int> visitedNodes;
 
     while(nextNode->address != destinationAddress) {
         int nextNodeAddress = nextNode->getDeterministicNextHop(sourceAddress, destinationAddress);
+
+        if(find(visitedNodes.begin(), visitedNodes.end(), nextNodeAddress) != visitedNodes.end()) {
+            return -1;
+        }
+
+        visitedNodes.push_back(nextNodeAddress);
+
+        cout << nextNodeAddress << endl;
         nextNode = getNodeForAddress(nextNodeAddress);
         if (nextNode != NULL) {
             hopsCount++;
