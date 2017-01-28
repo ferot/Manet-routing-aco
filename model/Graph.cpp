@@ -74,6 +74,7 @@ int Graph::getShortestPath(int sourceAddress, int destinationAddress) {
         int nextNodeAddress = nextNode->getDeterministicNextHop(sourceAddress, destinationAddress);
 
         if(find(visitedNodes.begin(), visitedNodes.end(), nextNodeAddress) != visitedNodes.end()) {
+            std::cout << "Loop" << std::endl;
             return -1;
         }
 
@@ -84,6 +85,7 @@ int Graph::getShortestPath(int sourceAddress, int destinationAddress) {
         if (nextNode != NULL) {
             hopsCount++;
         } else {
+            std::cout << "No next hop?" << std::endl;
             return -1;
         }
     } while(nextNode->address != destinationAddress);

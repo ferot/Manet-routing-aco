@@ -114,11 +114,11 @@ shared_ptr<RoutingEntry> Node::drawNextHop (tRoutingEntryVec vec){
 
     double random = ((float)rand()/(float)RAND_MAX) * pheromoneSum;
 
-    unsigned int choosenHop = 0;
-    while(random >= 0.0 && vec.size() > choosenHop-1) {
-                random -= vec.at(choosenHop)->pheromone;
-                ++choosenHop;
-    }
+    int choosenHop = -1;
+    do {
+        ++choosenHop;
+        random -= vec.at(choosenHop)->pheromone;
+    } while(random > 0.0);
 
     return vec.at(choosenHop);
 }
