@@ -17,9 +17,9 @@ void RoutingEntry::evaporatePheromone(){
 
 void RoutingEntry::increasePheromoneDepeningOnHops(int hops) {
     float factor = 1.0;
-//    for (int i = 0; i < hops; ++i) {
-//        factor *= 0.1;
-//    }
+    for (int i = 0; i < hops; ++i) {
+        factor *= 0.1;
+    }
 
     pheromone += PHEROMONE_DELTA * factor;
 }
