@@ -7,6 +7,8 @@
 #include <cstring>
 #include <memory>
 #include <iostream>
+#include <vector>
+#include <algorithm>
 #include <fstream>
 
 #include "Packet.h"
@@ -239,12 +241,21 @@ void nodesTick(PacketBuffer* incomming_buffers,
 
 
 
-void findBestPath()
+int printBestPath(int from, int to, RoutingEntry routing_table[nodes_num][nodes_num][nodes_num])
 {
+    int counter = 0;
+    std::vector<int> visited;
     int current_hop = from;
     std::cout << current_hop << ", ";
     while (current_hop != to)
     {
+        if (std::find(visited.begin(), visited.end(), current_hop) != visited.end())
+        {
+            std::cout << ", Loop";
+            break;
+        }
+        visited.push_back(current_hop);
+
         int best_hop = -1;
         float best_pheromone = -10000.0f;
         for (int i=0; i < nodes_num; ++i)
@@ -258,9 +269,11 @@ void findBestPath()
         }
 
         current_hop = best_hop;
+        counter += 1;
         std::cout << current_hop << ", ";
     }
-    std::cout << std::endl;
+    std::cout << " (Path length: " << counter << ")" << std::endl;
+    return counter;
 }
 
 
@@ -333,6 +346,13 @@ int main()
             buffer2.addPacket(packet1);
         }
 
+        if (ticks%200 == 0)
+        {
+            memcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry));
+            printBestPath(from, to, routing_table);
+        }
+
+
     //     nodesTick<<<nodes_num, 5>>>(device_incomming_buffer_ptr, 
     //                                 device_outgoing_buffer_ptr, 
     //                                 device_routing_table_ptr);
@@ -382,53 +402,13 @@ int main()
     memcpy(outgoing_buffer, device_outgoing_buffer_ptr, buffers_elem_num*sizeof(PacketBuffer));
     memcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry));
 
-    // //check the results
-    // std::cout << "Routing table:\n";
-    // for (int i=0; i<nodes_num; ++i)
-    // {
-    //     std::cout << "NODE: " << i << "\n";
-    //     for (int j=0; j<nodes_num; ++j)
-    //     {
-    //         std::cout << "\ttarget: " << j << "\n";
-    //         for (int k=0; k<nodes_num; ++k)
-    //         {
-    //             if (routing_table[i][j][k].pheromone > 0.0)
-    //             {
-    //                 std::cout << "\t\tneghbour: " << k << " - " << routing_table[i][j][k].pheromone << "\n";
-    //             }
-    //         }
-    //     }
-    // }
-    // std::cout << std::flush;
+    //check the results
+    printBestPath(from, to, routing_table);
 
-
-
-
-    
 
     free(device_incomming_buffer_ptr);
     free(device_outgoing_buffer_ptr);
     free(device_routing_table_ptr);
-
-
-
-
-
-    // for (auto jsonEdge : graphJSON["edges"]) 
-    // {
-    //     int fromNodeNumber = jsonEdge[0];
-    //     int toNodeNumber = jsonEdge[1];
-    //     jsonEdge[2] = routing_table[fromNodeNumber][i][toNodeNumber].pheromone
-        
-
-    //     for (int i=0; i < nodes_num; ++i)
-    //     {
-    //         routing_table[fromNodeNumber][i][toNodeNumber].pheromone = 1.0;
-    //         routing_table[toNodeNumber][i][fromNodeNumber].pheromone = 1.0;
-    //     }
-    // }
-    // std::ifstream inputStream("graph.json");
-    // inputStream >> graphJSON;
 }
 
 
