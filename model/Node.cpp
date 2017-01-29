@@ -19,7 +19,7 @@
 
 constexpr int MAX = 100000;
 constexpr int BUFFER_STEP = 10;
-constexpr int nodes_num = 120;
+constexpr int nodes_num = 90;
 constexpr long total_elem_num = nodes_num * nodes_num * nodes_num;
 constexpr long buffers_elem_num = nodes_num * nodes_num;
 
@@ -293,6 +293,7 @@ int printBestPath(int from, int to, RoutingEntry routing_table[nodes_num][nodes_
         if (std::find(visited.begin(), visited.end(), current_hop) != visited.end())
         {
             std::cout << ", Loop";
+            counter = 999;
             break;
         }
         visited.push_back(current_hop);
@@ -327,6 +328,7 @@ int countBestPath(int from, int to, RoutingEntry routing_table[nodes_num][nodes_
     {
         if (std::find(visited.begin(), visited.end(), current_hop) != visited.end())
         {
+            counter = 999;
             break;
         }
         visited.push_back(current_hop);
@@ -411,16 +413,16 @@ int main()
     double start = 0.0, finish = 0.0;
     start = MPI_Wtime();
 
+    std::srand(std::time(0) + rank);
     const unsigned from = 0;
     const unsigned to = 2;
-    int thread_num = 3;
+    int thread_num = 1;
 
     unsigned sequence = 0;
 
-    for(int ticks=0; ticks<10000; ++ticks)
+    for(int ticks=0; ticks<1000; ++ticks)
     {
         sequence += 1;
-
         if (ticks%200 == 0)
         {
             std::cout << "Process :: " << rank << " ";
@@ -432,8 +434,10 @@ int main()
     //     nodesTick<<<nodes_num, 5>>>(device_incomming_buffer_ptr, 
     //                                 device_outgoing_buffer_ptr, 
     //                                 device_routing_table_ptr);
+
         for (int j = 0 ; j<nodes_num; ++j)
         {
+
             for (int i = 0 ; i<thread_num; ++i)
             {
                 nodesTick(device_incomming_buffer_ptr, 
@@ -444,33 +448,33 @@ int main()
             }
             for (int i = 0 ; i<thread_num; ++i)
             {
-                nodesTick(device_incomming_buffer_ptr, 
-                          device_outgoing_buffer_ptr, 
-                          device_routing_table_ptr, 
+                nodesTick(device_incomming_buffer_ptr,
+                          device_outgoing_buffer_ptr,
+                          device_routing_table_ptr,
                           i, j, thread_num, nodes_num,
                           1, from, to, sequence);
             }
             for (int i = 0 ; i<thread_num; ++i)
             {
-                nodesTick(device_incomming_buffer_ptr, 
-                          device_outgoing_buffer_ptr, 
-                          device_routing_table_ptr, 
+                nodesTick(device_incomming_buffer_ptr,
+                          device_outgoing_buffer_ptr,
+                          device_routing_table_ptr,
                           i, j, thread_num, nodes_num,
                           2, from, to, sequence);
             }
             for (int i = 0 ; i<thread_num; ++i)
             {
-                nodesTick(device_incomming_buffer_ptr, 
-                          device_outgoing_buffer_ptr, 
-                          device_routing_table_ptr, 
+                nodesTick(device_incomming_buffer_ptr,
+                          device_outgoing_buffer_ptr,
+                          device_routing_table_ptr,
                           i, j, thread_num, nodes_num,
                           3, from, to, sequence);
             }
             for (int i = 0 ; i<thread_num; ++i)
             {
-                nodesTick(device_incomming_buffer_ptr, 
-                          device_outgoing_buffer_ptr, 
-                          device_routing_table_ptr, 
+                nodesTick(device_incomming_buffer_ptr,
+                          device_outgoing_buffer_ptr,
+                          device_routing_table_ptr,
                           i, j, thread_num, nodes_num,
                           4, from, to, sequence);
             }
@@ -480,10 +484,6 @@ int main()
                   device_outgoing_buffer_ptr);
     }
 
-
-
-
-
     memcpy(incomming_buffer, device_incomming_buffer_ptr, buffers_elem_num*sizeof(PacketBuffer));
     memcpy(outgoing_buffer, device_outgoing_buffer_ptr, buffers_elem_num*sizeof(PacketBuffer));
     memcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry));
@@ -491,8 +491,7 @@ int main()
     //Process prepares his results to send
     MRA_Result result;
     result.procNo = rank;
-    result.pathLength = countBestPath(from, to, routing_table);
-
+    result.pathLength = printBestPath(from, to, routing_table);
 
     //gather all pathLengths to decide which one prints result
     MRA_Result *pathLengths = NULL;
@@ -529,7 +528,9 @@ int main()
     if (bestResult.procNo == rank) {
         printBestPath(from, to, routing_table);
         printf("\nTime spent (%.15f)", finish-start);
+        std::cout << rank << std::endl;
     }
+
 
     free(device_incomming_buffer_ptr);
     free(device_outgoing_buffer_ptr);
