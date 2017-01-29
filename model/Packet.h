@@ -13,15 +13,19 @@ public:
 
     Packet()
     : sourceAddress(0),
+      destinationAddress(0),
       sequenceNumber(0),
       type(Type::invalid),
+      next_hop(0),
       hops_count(0)
     {}
 
-    Packet(int src, int sequenceNumber, Type type = Type::regular) 
+    Packet(int src, int dst, int sequenceNumber, Type type = Type::regular) 
     : sourceAddress(src), 
+      destinationAddress(dst),
       sequenceNumber(sequenceNumber), 
       type(type), 
+      next_hop(0),
       hops_count(0)
     {}
     // Hiding copy constructor helps discovering unplanned generation of new sequence number.
@@ -31,6 +35,8 @@ public:
     /*const*/ Type type;
     /*const*/ int sequenceNumber;
     int sourceAddress;
+    int destinationAddress;
+    int next_hop;
     unsigned hops_count;
 };
 
