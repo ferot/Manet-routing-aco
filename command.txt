@@ -1,0 +1,3 @@
+python ./graph_generator/generator.py 90 90 ./
+g++ -std=c++11 -O2 ./model/Node.cpp -o main
+./main
