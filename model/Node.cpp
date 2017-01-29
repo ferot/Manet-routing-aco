@@ -370,9 +370,9 @@ int main()
     int rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    // Build MPI_CITY datatype for MRA_Result
-    MPI_Type_contiguous(2, MPI_INT, &MPI_CITY);
-    MPI_Type_commit(&MPI_CITY);
+    // Build MPI_RESULT datatype for MRA_Result
+    MPI_Type_contiguous(2, MPI_INT, &MPI_RESULT);
+    MPI_Type_commit(&MPI_RESULT);
 
     PacketBuffer incomming_buffer[nodes_num][nodes_num];
     PacketBuffer outgoing_buffer[nodes_num][nodes_num];
@@ -495,11 +495,11 @@ int main()
 
 
     //gather all pathLengths to decide which one prints result
-    float *pathLengths = NULL;
+    MRA_Result *pathLengths = NULL;
     if (!rank) {
-      pathLengths = malloc(sizeof(MRA_Result) * world_size);
+        pathLengths = (MRA_Result*)malloc(sizeof(MRA_Result) * world_size);
     }
-    MPI_Gather(&pathLength,     //send_data
+    MPI_Gather(&result,         //send_data
                1,               //send_count
                MPI_RESULT,      //send_datatype
                pathLengths,     //recv_data
@@ -534,6 +534,9 @@ int main()
     free(device_incomming_buffer_ptr);
     free(device_outgoing_buffer_ptr);
     free(device_routing_table_ptr);
+
+    MPI_Type_free(&MPI_RESULT);
+    MPI_Finalize();
 }
 
 
