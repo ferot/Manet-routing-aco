@@ -16,30 +16,54 @@
 #include "json.hpp"
 
 constexpr int MAX = 100000;
-constexpr int MAX_BUFFER_SIZE = 10;
-constexpr int nodes_num = 90;
+constexpr int BUFFER_STEP = 10;
+constexpr int nodes_num = 120;
 constexpr long total_elem_num = nodes_num * nodes_num * nodes_num;
 constexpr long buffers_elem_num = nodes_num * nodes_num;
 
 class PacketBuffer
 {
 public:
-    PacketBuffer() : num_of_elements_(0) {}
-    int num_of_elements_;
-    Packet buffer_[MAX_BUFFER_SIZE];
+    
+    unsigned size_;
+    unsigned num_of_elements_;
+    Packet* buffer_;
 
-    bool addPacket(Packet& packet)
+    PacketBuffer() : num_of_elements_(0), size_(0), buffer_(NULL) {}
+    ~PacketBuffer() 
     {
-        if (num_of_elements_ == MAX_BUFFER_SIZE)
+        if (buffer_ != NULL)
         {
-            return false;
+            delete[] buffer_;
         }
-        else
+    }
+
+    void addPacket(Packet& packet)
+    {
+        if (buffer_ == NULL)
         {
-            buffer_[num_of_elements_] = packet;
-            num_of_elements_ += 1;
-            return true;
+            size_ = BUFFER_STEP;
+            buffer_ = new Packet[size_];
         }
+        else if (num_of_elements_ == size_)
+        {
+            size_ += BUFFER_STEP;
+            Packet* new_buffer = new Packet[size_];
+            memcpy(new_buffer, buffer_, num_of_elements_);
+            delete[] buffer_;
+            buffer_ = new_buffer;
+        }
+
+        buffer_[num_of_elements_] = packet;
+        num_of_elements_ += 1;
+    }
+
+    void reset()
+    {
+        delete[] buffer_;
+        buffer_ = NULL;
+        size_ = 0;
+        num_of_elements_ = 0;
     }
 };
 
@@ -111,18 +135,39 @@ void nodesTick(PacketBuffer* incomming_buffers,
                PacketBuffer* outgoing_buffers, 
                RoutingEntry* routing_table,
                int thread_num, int block_num, int thread_dim, int block_dim,
-               unsigned stage)
+               unsigned stage, int from, int to, unsigned tick)
 {
     PseudoCuda blockIdx, blockDim, threadIdx, threadDim;
     blockIdx.x = block_num;
     blockDim.x = block_dim;
     threadIdx.x = thread_num;
     threadDim.x = thread_dim;
+
     const int node = blockIdx.x;
 
+    
     switch (stage) 
     {
     case 0:
+    {
+        //TODO add packet generation randomly
+        if (node == from && threadIdx.x == 0 && rand()%3 == 0)
+        {
+            PacketBuffer& buffer = incomming_buffers[calcBufferElem(from, from)];
+            Packet packet(from, to, tick);
+            buffer.addPacket(packet);
+        }
+        
+        if (node == to && threadIdx.x == 0 && rand()%3 == 0)
+        {
+            PacketBuffer& buffer = incomming_buffers[calcBufferElem(to, to)];
+            Packet packet(to, from, tick);
+            buffer.addPacket(packet);
+        }
+        
+    }
+    break;
+    case 1:
     {
         // Ewaporacja tablicy feromonów
         int start_elem = node * nodes_num * nodes_num;
@@ -138,10 +183,8 @@ void nodesTick(PacketBuffer* incomming_buffers,
 
     }
     break;
-    case 1: // __synchronize();
+    case 2: // __synchronize();
     {
-        //TODO nie zwiększać feromonów dla samego siebie
-
         // Updating next_hops TODO could take packets more evenly
         for (int prev_hop = 0; prev_hop < blockDim.x; ++prev_hop) //neighbours from which we reived packets
         {
@@ -183,15 +226,14 @@ void nodesTick(PacketBuffer* incomming_buffers,
 
     }
     break;
-    case 2: // __synchronize();
+    case 3: // __synchronize();
     {
-
 
         // Czyszczenie buforów wyjściowych i wysyłanie pakietów
         for (int next_hop = threadIdx.x; next_hop < blockDim.x; next_hop += threadDim.x)
         {
             PacketBuffer& outgoing_packet_buffer = outgoing_buffers[calcBufferElem(next_hop, node)];
-            outgoing_packet_buffer.num_of_elements_ = 0;
+            outgoing_packet_buffer.reset();
 
             for (int prev_hop = 0; prev_hop < blockDim.x; ++prev_hop) //neighbours from which we reived packets
             {
@@ -203,15 +245,8 @@ void nodesTick(PacketBuffer* incomming_buffers,
 
                     if (current_packet.next_hop == next_hop && current_packet.destinationAddress != node)
                     {
-                        bool added = outgoing_packet_buffer.addPacket(current_packet);
-                        if (!added)
-                        {
-                            std::cout << "At node " << node << " packet " << current_packet.sequenceNumber << " that goes to " << next_hop << " was dropped due to exceeded buffer." << std::endl;
-                        }
-                        else
-                        {
-                            // std::cout << "At node " << node << " packet " << current_packet.sequenceNumber << " whose target is " << current_packet.destinationAddress << " came from " << prev_hop << " and goes to " << next_hop << "." << std::endl;
-                        }
+                        outgoing_packet_buffer.addPacket(current_packet);
+                        // std::cout << "At node " << node << " packet " << current_packet.sequenceNumber << " whose target is " << current_packet.destinationAddress << " came from " << prev_hop << " and goes to " << next_hop << "." << std::endl;
                     }
                 }
             }
@@ -219,14 +254,14 @@ void nodesTick(PacketBuffer* incomming_buffers,
 
     }
     break;
-    case 3: // __synchronize()
+    case 4: // __synchronize()
     {
 
         //free incoming buffer
         for (int prev_hop = threadIdx.x; prev_hop < blockDim.x; prev_hop += threadDim.x)
         {
             PacketBuffer& current_incoming_packet_buffer = incomming_buffers[calcBufferElem(node, prev_hop)];
-            current_incoming_packet_buffer.num_of_elements_ = 0;
+            current_incoming_packet_buffer.reset();
         }
     }
     break;
@@ -288,7 +323,7 @@ int main()
 {
     std::srand(std::time(0));
 
-    PacketBuffer incomming_buffer[nodes_num][nodes_num]; //Should this also be a thrust::device_vector ?
+    PacketBuffer incomming_buffer[nodes_num][nodes_num];
     PacketBuffer outgoing_buffer[nodes_num][nodes_num];
     RoutingEntry routing_table[nodes_num][nodes_num][nodes_num];
 
@@ -315,9 +350,6 @@ int main()
     PacketBuffer* device_outgoing_buffer_ptr;
     RoutingEntry* device_routing_table_ptr;
 
-
-
-
     device_incomming_buffer_ptr = (PacketBuffer* ) malloc(buffers_elem_num*sizeof(PacketBuffer));
     device_outgoing_buffer_ptr = (PacketBuffer* ) malloc(buffers_elem_num*sizeof(PacketBuffer));
     device_routing_table_ptr = (RoutingEntry* ) malloc(total_elem_num*sizeof(RoutingEntry));
@@ -327,24 +359,17 @@ int main()
     memcpy(device_routing_table_ptr, routing_table, total_elem_num*sizeof(RoutingEntry));
 
 
+
+
     const unsigned from = 0;
     const unsigned to = 2;
     int thread_num = 3;
 
-    unsigned packet_sequence = 0;
+    unsigned sequence = 0;
 
     for(int ticks=0; ticks<10000; ++ticks)
     {
-        if (ticks%5 == 0)
-        {
-            PacketBuffer& buffer = device_incomming_buffer_ptr[calcBufferElem(from, from)];
-            Packet packet(from, to, packet_sequence++);
-            buffer.addPacket(packet);
-
-            PacketBuffer& buffer2 = device_incomming_buffer_ptr[calcBufferElem(to, to)];
-            Packet packet1(to, from, packet_sequence++);
-            buffer2.addPacket(packet1);
-        }
+        sequence += 1;
 
         if (ticks%200 == 0)
         {
@@ -364,7 +389,7 @@ int main()
                           device_outgoing_buffer_ptr, 
                           device_routing_table_ptr, 
                           i, j, thread_num, nodes_num,
-                          0);
+                          0, from, to, sequence);
             }
             for (int i = 0 ; i<thread_num; ++i)
             {
@@ -372,7 +397,7 @@ int main()
                           device_outgoing_buffer_ptr, 
                           device_routing_table_ptr, 
                           i, j, thread_num, nodes_num,
-                          1);
+                          1, from, to, sequence);
             }
             for (int i = 0 ; i<thread_num; ++i)
             {
@@ -380,7 +405,7 @@ int main()
                           device_outgoing_buffer_ptr, 
                           device_routing_table_ptr, 
                           i, j, thread_num, nodes_num,
-                          2);
+                          2, from, to, sequence);
             }
             for (int i = 0 ; i<thread_num; ++i)
             {
@@ -388,7 +413,15 @@ int main()
                           device_outgoing_buffer_ptr, 
                           device_routing_table_ptr, 
                           i, j, thread_num, nodes_num,
-                          3);
+                          3, from, to, sequence);
+            }
+            for (int i = 0 ; i<thread_num; ++i)
+            {
+                nodesTick(device_incomming_buffer_ptr, 
+                          device_outgoing_buffer_ptr, 
+                          device_routing_table_ptr, 
+                          i, j, thread_num, nodes_num,
+                          4, from, to, sequence);
             }
         }
         
@@ -398,13 +431,14 @@ int main()
 
 
 
+
+
     memcpy(incomming_buffer, device_incomming_buffer_ptr, buffers_elem_num*sizeof(PacketBuffer));
     memcpy(outgoing_buffer, device_outgoing_buffer_ptr, buffers_elem_num*sizeof(PacketBuffer));
     memcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry));
 
     //check the results
     printBestPath(from, to, routing_table);
-
 
     free(device_incomming_buffer_ptr);
     free(device_outgoing_buffer_ptr);
