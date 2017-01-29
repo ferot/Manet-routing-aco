@@ -1,6 +1,8 @@
 // #include <curand.h>
 // #include <curand_kernel.h>
 
+#include <mpi.h>
+#include <time.h>
 #include <cstdlib>
 #include <ctime>
 #include <cmath>
@@ -20,6 +22,10 @@ constexpr int BUFFER_STEP = 10;
 constexpr int nodes_num = 120;
 constexpr long total_elem_num = nodes_num * nodes_num * nodes_num;
 constexpr long buffers_elem_num = nodes_num * nodes_num;
+
+typedef struct {
+        int procNo, pathLength;
+} MRA_Result;
 
 class PacketBuffer
 {
@@ -311,7 +317,37 @@ int printBestPath(int from, int to, RoutingEntry routing_table[nodes_num][nodes_
     return counter;
 }
 
+//does the same as printBestPath just no cout - needed to count fast path lentgth w-out printing
+int countBestPath(int from, int to, RoutingEntry routing_table[nodes_num][nodes_num][nodes_num])
+{
+    int counter = 0;
+    std::vector<int> visited;
+    int current_hop = from;
+    while (current_hop != to)
+    {
+        if (std::find(visited.begin(), visited.end(), current_hop) != visited.end())
+        {
+            break;
+        }
+        visited.push_back(current_hop);
 
+        int best_hop = -1;
+        float best_pheromone = -10000.0f;
+        for (int i=0; i < nodes_num; ++i)
+        {
+            float pheromone = routing_table[current_hop][to][i].pheromone;
+            if (pheromone > best_pheromone)
+            {
+                best_hop = i;
+                best_pheromone = pheromone;
+            }
+        }
+
+        current_hop = best_hop;
+        counter += 1;
+    }
+    return counter;
+}
 
 
 
@@ -321,7 +357,22 @@ int printBestPath(int from, int to, RoutingEntry routing_table[nodes_num][nodes_
 //liczba wątków to maksymalna liczba pakietów do przetworzenia na raz. Moja CUDA umożliwia stworzenie 1024 wątków.
 int main()
 {
+    MPI_Datatype MPI_RESULT;
+
+    MPI_Init(NULL, NULL);
     std::srand(std::time(0));
+
+    // Get the number of processes
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    // Get the rank of the process
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // Build MPI_CITY datatype for MRA_Result
+    MPI_Type_contiguous(2, MPI_INT, &MPI_CITY);
+    MPI_Type_commit(&MPI_CITY);
 
     PacketBuffer incomming_buffer[nodes_num][nodes_num];
     PacketBuffer outgoing_buffer[nodes_num][nodes_num];
@@ -343,9 +394,6 @@ int main()
         }
     }
 
-
-
-
     PacketBuffer* device_incomming_buffer_ptr;
     PacketBuffer* device_outgoing_buffer_ptr;
     RoutingEntry* device_routing_table_ptr;
@@ -358,8 +406,10 @@ int main()
     memcpy(device_outgoing_buffer_ptr, outgoing_buffer, buffers_elem_num*sizeof(PacketBuffer));
     memcpy(device_routing_table_ptr, routing_table, total_elem_num*sizeof(RoutingEntry));
 
-
-
+    // Capture the starting time
+    MPI_Barrier(MPI_COMM_WORLD);
+    double start = 0.0, finish = 0.0;
+    start = MPI_Wtime();
 
     const unsigned from = 0;
     const unsigned to = 2;
@@ -373,6 +423,7 @@ int main()
 
         if (ticks%200 == 0)
         {
+            std::cout << "Process :: " << rank << " ";
             memcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry));
             printBestPath(from, to, routing_table);
         }
@@ -437,8 +488,48 @@ int main()
     memcpy(outgoing_buffer, device_outgoing_buffer_ptr, buffers_elem_num*sizeof(PacketBuffer));
     memcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry));
 
-    //check the results
-    printBestPath(from, to, routing_table);
+    //Process prepares his results to send
+    MRA_Result result;
+    result.procNo = rank;
+    result.pathLength = countBestPath(from, to, routing_table);
+
+
+    //gather all pathLengths to decide which one prints result
+    float *pathLengths = NULL;
+    if (!rank) {
+      pathLengths = malloc(sizeof(MRA_Result) * world_size);
+    }
+    MPI_Gather(&pathLength,     //send_data
+               1,               //send_count
+               MPI_RESULT,      //send_datatype
+               pathLengths,     //recv_data
+               1,               //recv_count
+               MPI_RESULT,      //recv_datatype
+               0,               //root
+               MPI_COMM_WORLD); //communicator
+
+
+    //master process checks results
+    MRA_Result bestResult;
+    if (!rank) {
+        for(int i = 1; i < world_size; i++) {
+            if (bestResult.pathLength > pathLengths[i].pathLength) {
+                bestResult.pathLength = pathLengths[i].pathLength;
+                bestResult.procNo = pathLengths[i].procNo;
+            }
+        }
+    }
+    //master broadcasts results to other processes
+    MPI_Bcast(&bestResult, 1, MPI_RESULT, 0, MPI_COMM_WORLD);
+
+    // Capture the ending time
+    MPI_Barrier(MPI_COMM_WORLD);
+    finish = MPI_Wtime();
+
+    if (bestResult.procNo == rank) {
+        printBestPath(from, to, routing_table);
+        printf("\nTime spent (%.15f)", finish-start);
+    }
 
     free(device_incomming_buffer_ptr);
     free(device_outgoing_buffer_ptr);
