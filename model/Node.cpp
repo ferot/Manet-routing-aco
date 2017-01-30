@@ -24,6 +24,7 @@ constexpr long buffers_elem_num = nodes_num * nodes_num;
 
 typedef struct {
         int procNo, pathLength;
+        double time;
 } MRA_Result;
 
 class PacketBuffer
@@ -428,7 +429,7 @@ int main()
 
     // Capture the starting time
     MPI_Barrier(MPI_COMM_WORLD);
-    double start = 0.0, finish = 0.0;
+    double start = 0.0, totalTime = 0.0;
     start = MPI_Wtime();
 
     std::srand(std::time(0) + rank);
@@ -438,14 +439,19 @@ int main()
 
     unsigned sequence = 0;
 
-    for(int ticks=0; ticks<1000; ++ticks)
+    for(int ticks=0; ticks<3000; ++ticks)
     {
         sequence += 1;
         if (ticks%200 == 0)
         {
             std::cout << "Process :: " << rank << " ";
             memcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry));
-            printBestPath(from, to, routing_table);
+            int path = printBestPath(from, to, routing_table);
+            if (totalTime == 0.0 && path == shortestDist) {
+                double finishedTime = MPI_Wtime();
+                totalTime = finishedTime - start;
+                std::cout << "Najlepszy " << totalTime << std::endl;
+            }
         }
 
 
@@ -510,12 +516,14 @@ int main()
     MRA_Result result;
     result.procNo = rank;
     result.pathLength = printBestPath(from, to, routing_table);
+    result.time = totalTime;
 
     //gather all pathLengths to decide which one prints result
     MRA_Result *pathLengths = NULL;
     if (!rank) {
         pathLengths = (MRA_Result*)malloc(sizeof(MRA_Result) * world_size);
     }
+
     MPI_Gather(&result,         //send_data
                1,               //send_count
                MPI_RESULT,      //send_datatype
@@ -525,32 +533,30 @@ int main()
                0,               //root
                MPI_COMM_WORLD); //communicator
 
-
     //master process checks results
-    MRA_Result bestResult;
+    MRA_Result bestResult = result;
     if (!rank) {
+        std::cout << "Time " << bestResult.time << std::endl;
         for(int i = 1; i < world_size; i++) {
-            if (bestResult.pathLength > pathLengths[i].pathLength) {
+            std::cout << "Time " << pathLengths[i].time << std::endl;
+            if (bestResult.time > pathLengths[i].time) {
                 bestResult.pathLength = pathLengths[i].pathLength;
                 bestResult.procNo = pathLengths[i].procNo;
+                bestResult.time = pathLengths[i].time;
             }
         }
     }
 
     //master broadcasts results to other processes
     MPI_Bcast(&bestResult, 1, MPI_RESULT, 0, MPI_COMM_WORLD);
-    if(bestResult.pathLength == shortestDist)
-        goto end;
 
     // Capture the ending time
     MPI_Barrier(MPI_COMM_WORLD);
 
-    end:
-    finish = MPI_Wtime();
-
     if (bestResult.procNo == rank) {
+        double doubleResult = bestResult.time;
         printBestPath(from, to, routing_table);
-        printf("\nTime spent (%.15f)", finish-start);
+        printf("\nTime spent (%.15f)", doubleResult / 10000);
         std::cout << rank << std::endl;
     }
 
