@@ -12,7 +12,6 @@
 #include <vector>
 #include <algorithm>
 #include <fstream>
-
 #include "Packet.h"
 #include "RoutingEntry.hpp"
 #include "json.hpp"
@@ -537,10 +536,11 @@ int main()
             }
         }
     }
-    if(bestResult.pathLength == shortestDist)
-        goto end;
+
     //master broadcasts results to other processes
     MPI_Bcast(&bestResult, 1, MPI_RESULT, 0, MPI_COMM_WORLD);
+    if(bestResult.pathLength == shortestDist)
+        goto end;
 
     // Capture the ending time
     MPI_Barrier(MPI_COMM_WORLD);
