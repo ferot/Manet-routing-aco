@@ -24,7 +24,6 @@ constexpr long buffers_elem_num = nodes_num * nodes_num;
 
 typedef struct {
         int procNo, pathLength;
-        double time;
 } MRA_Result;
 
 class PacketBuffer
@@ -444,9 +443,9 @@ int main()
         sequence += 1;
         if (ticks%200 == 0)
         {
-            std::cout << "Process :: " << rank << " ";
+//            std::cout << "Process :: " << rank << " ";
             memcpy(routing_table, device_routing_table_ptr, total_elem_num*sizeof(RoutingEntry));
-            int path = printBestPath(from, to, routing_table);
+            int path = countBestPath(from, to, routing_table);
             if (totalTime == 0.0 && path == shortestDist) {
                 double finishedTime = MPI_Wtime();
                 totalTime = finishedTime - start;
@@ -515,8 +514,7 @@ int main()
     //Process prepares his results to send
     MRA_Result result;
     result.procNo = rank;
-    result.pathLength = printBestPath(from, to, routing_table);
-    result.time = totalTime;
+    result.pathLength = countBestPath(from, to, routing_table);
 
     //gather all pathLengths to decide which one prints result
     MRA_Result *pathLengths = NULL;
@@ -534,15 +532,13 @@ int main()
                MPI_COMM_WORLD); //communicator
 
     //master process checks results
-    MRA_Result bestResult = result;
+    MRA_Result bestResult;
     if (!rank) {
-        std::cout << "Time " << bestResult.time << std::endl;
-        for(int i = 1; i < world_size; i++) {
-            std::cout << "Time " << pathLengths[i].time << std::endl;
-            if (bestResult.time > pathLengths[i].time) {
+        bestResult = result;
+        for(int i = 0; i < world_size; i++) {
+            if (bestResult.pathLength > pathLengths[i].pathLength) {
                 bestResult.pathLength = pathLengths[i].pathLength;
                 bestResult.procNo = pathLengths[i].procNo;
-                bestResult.time = pathLengths[i].time;
             }
         }
     }
@@ -554,10 +550,9 @@ int main()
     MPI_Barrier(MPI_COMM_WORLD);
 
     if (bestResult.procNo == rank) {
-        double doubleResult = bestResult.time;
+        std::cout << "Najlepsza sciezka: ";
         printBestPath(from, to, routing_table);
-        printf("\nTime spent (%.15f)", doubleResult / 10000);
-        std::cout << rank << std::endl;
+//        printf("\nTime spent (%.15f)", doubleResult / 10000);
     }
 
 
