@@ -406,8 +406,6 @@ int main(int argc, char **argv)
         fileName = newFilename;
     }
 
-    std::cout << fileName << std::endl;
-
     // initialize values
     std::ifstream inputStream(fileName.c_str());
     nlohmann::json graphJSON;
@@ -459,7 +457,7 @@ int main(int argc, char **argv)
             if (totalTime == 0.0 && path == shortestDist) {
                 double finishedTime = MPI_Wtime();
                 totalTime = finishedTime - start;
-                std::cout << "Najlepszy czas" << totalTime << std::endl;
+                std::cout << totalTime << std::endl;
             }
         }
 
