@@ -372,11 +372,11 @@ int getShortestDist(){
 
 //liczba bloków to liczba węzłów. Węzłów może być aż do 2^16-1, czyli 65535
 //liczba wątków to maksymalna liczba pakietów do przetworzenia na raz. Moja CUDA umożliwia stworzenie 1024 wątków.
-int main()
+int main(int argc, char **argv)
 {
     MPI_Datatype MPI_RESULT;
 
-    MPI_Init(NULL, NULL);
+    MPI_Init(&argc, &argv);
     std::srand(std::time(0));
 
     // Get the number of processes
@@ -391,15 +391,25 @@ int main()
     MPI_Type_contiguous(2, MPI_INT, &MPI_RESULT);
     MPI_Type_commit(&MPI_RESULT);
 
-    short int shortestDist =  getShortestDist();
 //    std::cout << shortestDist << std::endl;
 
     PacketBuffer incomming_buffer[nodes_num][nodes_num];
     PacketBuffer outgoing_buffer[nodes_num][nodes_num];
     RoutingEntry routing_table[nodes_num][nodes_num][nodes_num];
 
+    short int shortestDist =  getShortestDist();
+
+    std::string fileName = "graph.json";
+    if (argc == 3) {
+        shortestDist = atoi(argv[1]);
+        std::string newFilename(argv[2]);
+        fileName = newFilename;
+    }
+
+    std::cout << fileName << std::endl;
+
     // initialize values
-    std::ifstream inputStream("graph.json");
+    std::ifstream inputStream(fileName.c_str());
     nlohmann::json graphJSON;
     inputStream >> graphJSON;
 
@@ -449,7 +459,7 @@ int main()
             if (totalTime == 0.0 && path == shortestDist) {
                 double finishedTime = MPI_Wtime();
                 totalTime = finishedTime - start;
-                std::cout << "Najlepszy " << totalTime << std::endl;
+                std::cout << "Najlepszy czas" << totalTime << std::endl;
             }
         }
 
