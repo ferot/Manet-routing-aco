@@ -15,8 +15,14 @@ parser.add_argument('path', type=str, help='Output path')
 args = parser.parse_args()
 
 graph = nx.gnm_random_graph(args.nodes, args.edges)
-nx.draw(graph, pos=nx.spring_layout(graph), with_labels=True)
-matplotlib.pyplot.savefig(args.path + "/graph.png")
+#nx.draw(graph, pos=nx.spring_layout(graph), with_labels=True)
+#matplotlib.pyplot.savefig(args.path + "/graph.png")
 save(graph, args.path + "/graph.json")
 
 print([p for p in nx.all_shortest_paths(graph,source=0,target=2)])
+
+leng=nx.shortest_path_length(graph,source=0,target=2)
+print(leng)
+f = open( 'shortestDist.txt', 'w' )
+f.write( repr(leng))
+f.close()

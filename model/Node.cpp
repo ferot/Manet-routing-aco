@@ -352,7 +352,23 @@ int countBestPath(int from, int to, RoutingEntry routing_table[nodes_num][nodes_
 }
 
 
-
+int getShortestDist(){
+    int shortest = 0;
+    std::ifstream myReadFile;
+     myReadFile.open("shortestDist.txt");
+     char output[100];
+     if (myReadFile.is_open()) {
+     while (!myReadFile.eof()) {
+        myReadFile >> output;
+//        std::cout<<output;
+     }
+    }
+     std::stringstream strValue;
+     strValue << output;
+     strValue >> shortest;
+    myReadFile.close();
+    return shortest;
+}
 
 
 //liczba bloków to liczba węzłów. Węzłów może być aż do 2^16-1, czyli 65535
@@ -375,6 +391,9 @@ int main()
     // Build MPI_RESULT datatype for MRA_Result
     MPI_Type_contiguous(2, MPI_INT, &MPI_RESULT);
     MPI_Type_commit(&MPI_RESULT);
+
+    short int shortestDist =  getShortestDist();
+//    std::cout << shortestDist << std::endl;
 
     PacketBuffer incomming_buffer[nodes_num][nodes_num];
     PacketBuffer outgoing_buffer[nodes_num][nodes_num];
@@ -518,11 +537,15 @@ int main()
             }
         }
     }
+    if(bestResult.pathLength == shortestDist)
+        goto end;
     //master broadcasts results to other processes
     MPI_Bcast(&bestResult, 1, MPI_RESULT, 0, MPI_COMM_WORLD);
 
     // Capture the ending time
     MPI_Barrier(MPI_COMM_WORLD);
+
+    end:
     finish = MPI_Wtime();
 
     if (bestResult.procNo == rank) {
