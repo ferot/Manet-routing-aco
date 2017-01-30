@@ -11,6 +11,7 @@ class Packet {
 public:
     enum class Type {regular, forward, backward, route_error, duplicate_error, invalid};
 
+    __device__
     Packet()
     : sourceAddress(0),
       destinationAddress(0),
@@ -20,6 +21,7 @@ public:
       hops_count(0)
     {}
 
+    __device__
     Packet(int src, int dst, int sequenceNumber, Type type = Type::regular) 
     : sourceAddress(src), 
       destinationAddress(dst),

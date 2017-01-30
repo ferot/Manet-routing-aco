@@ -13,6 +13,9 @@ public:
     RoutingEntry() : pheromone(-1.0f) 
     {}
 
+#ifndef UNCUDA
+    __device__
+#endif
     static float calculateIncreasement(unsigned num_hops)
     {
         return PHEROMONE_DELTA * std::pow(0.9, num_hops);
@@ -23,6 +26,9 @@ public:
         pheromone += increase_pheromone;
     }
 
+#ifndef UNCUDA
+    __device__
+#endif
     void evaporatePheromone()
     {
         pheromone = (1-EVAPORATION_FACTOR)*pheromone;
